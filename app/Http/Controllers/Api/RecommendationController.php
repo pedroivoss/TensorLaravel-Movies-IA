@@ -35,7 +35,7 @@ use Illuminate\Http\JsonResponse;
  */
 class RecommendationController extends Controller
 {
-    private const LIMIT = 20;
+    private const LIMIT = 5;
 
     public function index(User $user): JsonResponse
     {

@@ -149,7 +149,7 @@ export default function RecommendationSystem() {
 
         setLoadingDetail(false);
         setLoadingRecommendations(false);
-    }, [selectedUser]);
+    }, [users]);
 
     // ── Salvar avaliação ──────────────────────────────────────────────────────
     const handleRate = useCallback(async (movieId, rating) => {
@@ -199,27 +199,26 @@ export default function RecommendationSystem() {
             {/* ── Header ─────────────────────────────────────────────────── */}
             <Header style={{
                 background: '#fff',
-                borderBottom: '1px solid #e8e8e8',
-                padding: '0 24px',
+                borderBottom: '2px solid #1677ff',
+                padding: '0 28px',
                 display: 'flex',
                 alignItems: 'center',
-                gap: 12,
+                gap: 10,
                 position: 'sticky',
                 top: 0,
                 zIndex: 100,
+                height: 56,
             }}>
-                <PlayCircleOutlined style={{ fontSize: 28, color: '#1677ff' }} />
-                <div>
-                    <Title level={4} style={{ margin: 0, lineHeight: '22px' }}>
-                        Movie Recommendation AI
-                    </Title>
-                    <Text type="secondary" style={{ fontSize: 12 }}>
-                        Sistema de Recomendação com TensorFlow.js + Laravel
-                    </Text>
-                </div>
+                <PlayCircleOutlined style={{ fontSize: 24, color: '#1677ff' }} />
+                <Title level={4} style={{ margin: 0, lineHeight: 1, fontSize: 18 }}>
+                    Movie Recommendation AI
+                </Title>
+                <Text type="secondary" style={{ fontSize: 12, marginTop: 1 }}>
+                    · Laravel + React
+                </Text>
                 <div style={{ marginLeft: 'auto' }}>
                     <Tag icon={<RobotOutlined />} color="blue">
-                        TF.js — Em breve
+                        TF.js — em breve
                     </Tag>
                 </div>
             </Header>
@@ -261,6 +260,8 @@ export default function RecommendationSystem() {
                         }
                         optionRender={(option) => {
                             const u = option.data;
+                            // Ant Design pode chamar optionRender para estados internos sem dados (ex: clear)
+                            if (!u?.name) return null;
                             const initials = u.name.split(' ').slice(0, 2).map(w => w[0]).join('').toUpperCase();
                             const color    = AVATAR_COLORS[u.id % AVATAR_COLORS.length];
                             return (
@@ -281,8 +282,8 @@ export default function RecommendationSystem() {
                         }}
                         options={users.map(u => ({
                             value: u.id,
-                            label: u.name,   // usado pelo filterOption
-                            data: u,         // passado ao optionRender
+                            label: u.name,   // usado pelo filterOption e pela busca
+                            ...u,            // espalha os campos do usuário para o optionRender acessar via option.data
                         }))}
                     />
                 </div>
@@ -386,7 +387,8 @@ export default function RecommendationSystem() {
                             {/* Lista de resultados */}
                             {loadingSearch ? (
                                 <div style={{ textAlign: 'center', padding: 40 }}>
-                                    <Spin tip="Buscando..." />
+                                    <Spin />
+                                    <div style={{ marginTop: 8, color: '#999', fontSize: 13 }}>Buscando...</div>
                                 </div>
                             ) : searchResults.length === 0 ? (
                                 <Empty
@@ -443,7 +445,8 @@ export default function RecommendationSystem() {
                                 />
                             ) : loadingRecommendations ? (
                                 <div style={{ textAlign: 'center', padding: 40 }}>
-                                    <Spin tip="Carregando recomendações..." />
+                                    <Spin />
+                                    <div style={{ marginTop: 8, color: '#999', fontSize: 13 }}>Carregando recomendações...</div>
                                 </div>
                             ) : (
                                 <>
