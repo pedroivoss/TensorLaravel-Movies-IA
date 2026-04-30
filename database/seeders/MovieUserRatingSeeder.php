@@ -11,131 +11,171 @@ use Illuminate\Support\Collection;
 /**
  * Seeder: MovieUserRatingSeeder
  *
- * Gera avaliações (1-5) coerentes com o perfil de cada usuário.
+ * Gera avaliações (1–5) coerentes com o perfil individual de cada usuário.
  *
- * ── Por que "coerente" importa para o treinamento? ──────────────────────────
- * Se as notas fossem puramente aleatórias, a rede neural não encontraria
- * nenhum padrão nos dados e o modelo aprenderia apenas "ruído".
+ * ── Por que "coerente" importa para o TensorFlow.js? ─────────────────────────
+ * Se as notas fossem aleatórias, a rede neural aprenderia apenas "ruído"
+ * e os pesos convergiriam para a média global, sem nenhuma personalização.
  *
- * Com notas coerentes, a rede consegue descobrir que:
- *   - Usuários que amam Action tendem a dar 4-5 para filmes de Action.
- *   - Usuários que preferem Drama dão 1-2 para filmes de Terror.
- *   - Usuários mais velhos (Clássicos) valorizam filmes com alto 'rate' IMDB.
+ * Com notas coerentes, a rede descobre padrões reais, por exemplo:
+ *   - Usuários com ["Horror","Thriller"] → notas 4–5 para filmes de horror.
+ *   - Usuários com ["Documentary","Biography"] → notas 1–2 para ação pura.
+ *   - Filmes com alta nota IMDB (≥ 7.5) recebem notas melhores em geral.
  *
- * Esse padrão é o "sinal de treinamento" que o TensorFlow.js vai capturar.
+ * Esses padrões são o "sinal de treinamento" que o modelo vai capturar.
  *
  * ── Algoritmo de pontuação ────────────────────────────────────────────────────
- * Para cada par (usuário, filme), calculamos um "score de afinidade":
+ * Para cada par (usuário, filme), calculamos um score de afinidade:
  *
- *   1. Sobreposição de gêneros: +2 por cada gênero favorito que o filme tem.
- *   2. Qualidade IMDB: filmes com rate ≥ 7.5 ganham +1 (bom para todos).
- *   3. Ruído gaussiano: ±1 aleatório para simular humor e variação humana.
+ *   Score base          = 3  (neutro — o usuário não tem opinião a priori)
+ *   + Genre match bonus = +1 por gênero favorito presente no filme (máx 2)
+ *   − Genre miss penalty= −1 se NENHUM gênero do filme coincide com os favoritos
+ *   + Quality bonus     = +1 se nota IMDB ≥ 7.5 (bons filmes agradam mais)
+ *   + Gaussian noise    = ±0.7 (simula humor, variação de humor, re-assistências)
  *
- * O score final é mapeado para a escala 1-5 e clampado para [1, 5].
+ * Score mapeado e clampado para [1, 5].
  *
- * ── Casos de borda tratados ─────────────────────────────────────────────────
- * - Usuários "ColdStart" (genres = null): ignorados (sem ratings).
- * - Usuários "SemHistorico": ignorados intencionalmente (sem ratings).
- * - Filmes sem gênero: tratados como sobreposição zero (nota próxima de 3).
- * - Constraint UNIQUE (user_id, movie_id): garantida via uniqueBy no upsert.
+ * Exemplos com um usuário que ama ["Action", "Sci-Fi"]:
+ *   Dune      (Action, Adventure, rate=8.3) → 3 +1(Action)         +1 +ruído → ~5
+ *   Inception (Action, Sci-Fi,    rate=8.8) → 3 +1+1(Action+Sci-Fi)+1 +ruído → ~5
+ *   Notebook  (Drama, Romance,    rate=7.9) → 3 −1(miss)           +1 +ruído → ~3
+ *   Hereditary(Horror,            rate=7.3) → 3 −1(miss)           +0 +ruído → ~2
+ *
+ * ── Distribuição esperada de notas ───────────────────────────────────────────
+ *   Nota 1 (Odiei)     →  ~2%   (miss + sem qualidade + ruído muito negativo)
+ *   Nota 2 (Não gostei)→ ~36%   (miss + sem qualidade, cenário mais comum)
+ *   Nota 3 (Neutro)    → ~18%   (miss + qualidade, ou match único sem qualidade)
+ *   Nota 4 (Gostei)    → ~22%   (1 match ou match + qualidade com ruído negativo)
+ *   Nota 5 (Amei)      → ~22%   (2 matches ou 1 match + qualidade)
+ *
+ * ── Usuários excluídos deste seeder ──────────────────────────────────────────
+ *   Cold Start absoluto → favorite_genres IS NULL (excluído via whereNotNull)
+ *   Cold Start parcial  → email LIKE '%@semhistorico.test' (excluído via where)
+ *
+ * Estes dois grupos são casos de borda testados pelo sistema: existem no banco,
+ * mas sem avaliações, forçando a rede a lidar com inputs zerados ou incompletos.
  */
 class MovieUserRatingSeeder extends Seeder
 {
-    // Quantos filmes cada usuário avalia (equilibra diversidade e velocidade)
+    // Quantos filmes cada usuário avalia por rodada de seed
     private const RATINGS_PER_USER = 40;
 
-    // Nota base quando não há sobreposição de gêneros (neutro)
+    // Ponto neutro da escala antes de qualquer bônus ou penalidade
     private const BASE_RATING = 3;
 
-    // Bonus por gênero favorito encontrado no filme.
-    // Valor 1 (não 2) garante distribuição equilibrada:
-    //   0 matches → ~2 | 1 match → ~4 | 2+ matches → ~5
+    // Bônus por gênero favorito encontrado no filme (máx. 2 contam).
+    // Valor 1 (e não 2) mantém distribuição equilibrada:
+    //   0 matches → ~2  |  1 match → ~4  |  2 matches → ~5
     private const GENRE_MATCH_BONUS = 1;
 
-    // Bonus para filmes muito bem avaliados no IMDB (≥ 7.5)
+    // Penalidade quando o filme não tem nenhum gênero favorito do usuário
+    private const GENRE_MISS_PENALTY = -1;
+
+    // Bônus para filmes bem avaliados no IMDB — qualidade agrada a todos
     private const HIGH_RATE_BONUS = 1;
+
+    // Limiar de "boa avaliação" no IMDB
+    private const HIGH_RATE_THRESHOLD = 7.5;
+
+    // ─────────────────────────────────────────────────────────────────────────
 
     public function run(): void
     {
         $this->command->info('Gerando avaliações coerentes por perfil de usuário...');
 
-        // Carrega todos os filmes de uma vez (evita N+1 queries no loop)
+        // Carrega todos os filmes de uma vez para evitar N+1 queries no loop
         $allMovies = Movie::all();
 
         if ($allMovies->isEmpty()) {
             $this->command->error(
-                'Nenhum filme encontrado! Execute primeiro: php artisan movies:import'
+                'Nenhum filme encontrado. Execute primeiro: php artisan movies:import'
             );
             return;
         }
 
-        // Carrega apenas usuários que DEVEM ter ratings
-        // (exclui ColdStart e SemHistorico propositalmente)
-        $users = User::all()->filter(function (User $user) {
-            $archetype = $this->extractArchetype($user->name);
-            return ! in_array($archetype, ['ColdStart', 'SemHistorico'], true);
-        });
+        /*
+         * Filtra apenas usuários que devem receber avaliações:
+         *
+         *   whereNotNull('favorite_genres')
+         *     → exclui Cold Start absoluto (esses têm favorite_genres = null)
+         *
+         *   where('email', 'not like', '%@semhistorico.test')
+         *     → exclui Cold Start parcial (esses têm gêneros mas sem histórico)
+         *       A convenção de domínio é definida no UserSeeder.
+         */
+        $users = User::whereNotNull('favorite_genres')
+                     ->where('email', 'not like', '%@semhistorico.test')
+                     ->get();
+
+        if ($users->isEmpty()) {
+            $this->command->warn('Nenhum usuário elegível encontrado. Execute o UserSeeder primeiro.');
+            return;
+        }
 
         $totalRatings = 0;
         $bar = $this->command->getOutput()->createProgressBar($users->count());
+        $bar->setFormat(' %current%/%max% [%bar%] %percent:3s%% — %message%');
+        $bar->setMessage('iniciando...');
         $bar->start();
 
         foreach ($users as $user) {
             $ratingsForUser = $this->generateRatingsForUser($user, $allMovies);
 
-            // Insert em lote com ignore de duplicatas (idempotente)
+            // Upsert em lotes de 100 para evitar estouro de memória
+            // e garantir idempotência (rodar o seeder duas vezes não duplica)
             foreach (array_chunk($ratingsForUser, 100) as $chunk) {
                 MovieUserRating::upsert(
                     $chunk,
-                    ['user_id', 'movie_id'],  // chaves únicas (conflict detection)
-                    ['rating', 'updated_at']  // campos a atualizar em caso de conflito
+                    uniqueBy: ['user_id', 'movie_id'],
+                    update:   ['rating', 'updated_at']
                 );
             }
 
             $totalRatings += count($ratingsForUser);
+            $bar->setMessage("{$totalRatings} avaliações inseridas");
             $bar->advance();
         }
 
         $bar->finish();
         $this->command->newLine(2);
-        $this->command->info("✓ {$totalRatings} avaliações coerentes geradas.");
+        $this->command->info("✓ {$totalRatings} avaliações coerentes geradas para {$users->count()} usuários.");
+        $this->command->newLine();
 
-        // Mostra estatísticas de distribuição das notas
         $this->printRatingStats();
     }
 
+    // ─────────────────────────────────────────────────────────────────────────
+    // Métodos privados
+    // ─────────────────────────────────────────────────────────────────────────
+
     /**
-     * Gera um array de avaliações coerentes com o perfil do usuário.
+     * Gera todas as avaliações de um único usuário.
      *
-     * O processo:
-     *   1. Seleciona RATINGS_PER_USER filmes aleatoriamente (sem repetição).
-     *   2. Para cada filme, calcula um score de afinidade com base nos gêneros.
-     *   3. Adiciona ruído gaussiano para simular variação humana.
-     *   4. Mapeia o score para a escala [1, 5].
+     * Seleciona RATINGS_PER_USER filmes aleatoriamente (sem repetição),
+     * calcula a nota de cada um via score de afinidade e retorna como array
+     * pronto para inserção via upsert.
      *
      * @param  User       $user
-     * @param  Collection $allMovies
-     * @return array<int, array{user_id:int, movie_id:int, rating:int, ...}>
+     * @param  Collection $allMovies  Todos os filmes carregados em memória
+     * @return array<int, array{user_id:int, movie_id:int, rating:int, created_at:string, updated_at:string}>
      */
     private function generateRatingsForUser(User $user, Collection $allMovies): array
     {
+        // favorite_genres já é array PHP graças ao cast no Model User
         $favoriteGenres = $user->favorite_genres ?? [];
 
-        // Seleciona filmes aleatoriamente (sem reposição)
         $selectedMovies = $allMovies->random(
             min(self::RATINGS_PER_USER, $allMovies->count())
         );
 
+        $now     = now()->toDateTimeString();
         $ratings = [];
-        $now = now()->toDateTimeString();
 
         foreach ($selectedMovies as $movie) {
-            $rating = $this->calculateRating($movie, $favoriteGenres);
-
             $ratings[] = [
                 'user_id'    => $user->id,
                 'movie_id'   => $movie->id,
-                'rating'     => $rating,
+                'rating'     => $this->calculateRating($movie, $favoriteGenres),
                 'created_at' => $now,
                 'updated_at' => $now,
             ];
@@ -145,85 +185,83 @@ class MovieUserRatingSeeder extends Seeder
     }
 
     /**
-     * Calcula a nota (1-5) de um usuário para um filme com base nos gêneros.
+     * Calcula a nota (1–5) que um usuário daria a um filme.
      *
-     * Lógica:
-     *   - Começa em BASE_RATING (3 = neutro).
-     *   - Adiciona GENRE_MATCH_BONUS (2) por cada gênero favorito encontrado.
-     *     (limitado a +4 máximo, para não extrapolar a escala)
-     *   - Adiciona HIGH_RATE_BONUS (1) para filmes IMDB ≥ 7.5.
-     *   - Aplica ruído de ±1 (simulando humor e variação individual).
-     *   - Clampeia o resultado para [1, 5].
+     * O score é construído em camadas e depois clampado para [1, 5]:
      *
-     * Exemplos (usuário ama Action, Sci-Fi):
-     *   - "Dune" (Action, Adventure, Drama, rate=8.3): 3 + 1(Action) + 1(rate) + ruído → ~5
-     *   - "Inception" (Action, Sci-Fi, rate=8.8): 3 + 2(Action+Sci-Fi) + 1 + ruído → ~5
-     *   - "The Notebook" (Drama, Romance, rate=7.9): 3 + 0 - 1 + 1(rate) + ruído → ~3
-     *   - "Hereditary" (Horror, rate=7.3): 3 - 1 + 0 + ruído → ~2
+     *   1. Base neutra (3)
+     *   2. Bônus por sobreposição de gêneros (máx. +2 por 2 matches)
+     *      OU penalidade se não houver nenhum match (−1)
+     *   3. Bônus de qualidade IMDB (opcional, +1)
+     *   4. Ruído gaussiano (±0.7) para simular variação humana
+     *
+     * Por que limitar a 2 matches?
+     *   Com BASE=3 e BONUS=1, se contássemos todos os matches:
+     *   Um filme com 4 gêneros todos favoritos daria 3+4=7 → sempre 5.
+     *   Limitando a 2, preservamos a influência do ruído e da qualidade.
+     *
+     * @param  Movie $movie
+     * @param  array $favoriteGenres  Array de gêneros favoritos do usuário
+     * @return int                    Nota de 1 a 5
      */
     private function calculateRating(Movie $movie, array $favoriteGenres): int
     {
         $score = self::BASE_RATING;
 
-        // Converte a string de gêneros do filme em array para comparação
-        $movieGenres = $movie->genres_array; // accessor definido no Model
+        // genres_array é um accessor do Model Movie que converte a string
+        // "Action, Drama" em ['Action', 'Drama']
+        $movieGenres = $movie->genres_array;
 
-        // Bônus por sobreposição de gêneros (máximo de 2 matches conta)
         if (! empty($favoriteGenres) && ! empty($movieGenres)) {
-            $matches = count(array_intersect($favoriteGenres, $movieGenres));
-            // Limita a 2 matches para não extrapolar: 3+4=7 > 5
-            $matchBonus = min($matches, 2) * self::GENRE_MATCH_BONUS;
+            $matchCount = count(array_intersect($favoriteGenres, $movieGenres));
 
-            // Se há matches, o score sobe (usuário gosta deste tipo de filme)
-            // Se não há matches, aplicamos penalidade leve (-1)
-            $score += $matches > 0 ? $matchBonus : -1;
+            if ($matchCount > 0) {
+                // Bônus proporcional ao número de matches (limitado a 2)
+                $score += min($matchCount, 2) * self::GENRE_MATCH_BONUS;
+            } else {
+                // Penalidade: nenhum gênero favorito presente no filme
+                $score += self::GENRE_MISS_PENALTY;
+            }
         }
 
-        // Bônus de qualidade: filmes muito bem avaliados no IMDB agradam mais
-        if ($movie->rate !== null && $movie->rate >= 7.5) {
+        // Filmes com alta avaliação no IMDB tendem a agradar mais
+        if ($movie->rate !== null && $movie->rate >= self::HIGH_RATE_THRESHOLD) {
             $score += self::HIGH_RATE_BONUS;
         }
 
-        // Ruído humano: simula que às vezes gostamos de algo fora do padrão
-        // ou não gostamos de algo que "deveria" ser nossa cara
-        $noise = $this->gaussianNoise();
-        $score += $noise;
+        // Ruído pseudo-gaussiano: simula variação de humor, expectativas e gosto pessoal
+        $score += $this->gaussianNoise();
 
-        // Garante que a nota final está dentro da escala [1, 5]
         return (int) max(1, min(5, round($score)));
     }
 
     /**
-     * Gera ruído pseudo-gaussiano no intervalo aproximado [-1.5, +1.5].
+     * Gera ruído pseudo-gaussiano centrado em zero (desvio padrão ≈ 0.7).
      *
-     * Usamos a soma de três uniformes (Irwin-Hall distribution), que
-     * aproxima uma gaussiana sem depender de extensões PHP.
-     * Resultado centrado em 0, desvio padrão ≈ 0.7.
+     * Usamos a aproximação de Irwin-Hall (soma de N uniformes):
+     *   - n=3 uniformes somadas → curva em sino suave
+     *   - centralizada em 1.5 (média da soma)
+     *   - escalada por 0.5 → resultado em ≈ [−0.75, +0.75]
+     *
+     * Por que não usar rand(-1, 1)?
+     *   Uma uniforme [-1,1] superestima os extremos. A Irwin-Hall dá mais
+     *   peso ao centro (0), tornando os ruídos intermediários mais prováveis,
+     *   o que é fisiologicamente mais realista.
      */
     private function gaussianNoise(): float
     {
-        // Soma de 3 uniformes [0,1] e centraliza: distribui como gaussiana truncada
         $u = (mt_rand() / mt_getrandmax())
            + (mt_rand() / mt_getrandmax())
            + (mt_rand() / mt_getrandmax());
 
-        // Centraliza: 3/2 = 1.5 (média da Irwin-Hall com n=3)
-        // Escala por 0.5 para limitar o ruído a ≈ ±1
         return ($u - 1.5) * 0.5;
     }
 
     /**
-     * Extrai o nome do arquétipo a partir do nome do usuário.
-     * Ex: "Aventureiro #3" → "Aventureiro"
-     */
-    private function extractArchetype(string $name): string
-    {
-        return trim(explode('#', $name)[0]);
-    }
-
-    /**
-     * Imprime estatísticas de distribuição das notas geradas.
-     * Útil para verificar que a distribuição está coerente e não viesada.
+     * Exibe uma tabela com a distribuição das notas geradas.
+     *
+     * Útil para verificar rapidamente se o algoritmo está produzindo
+     * uma distribuição coerente (sem concentração extrema em um único valor).
      */
     private function printRatingStats(): void
     {
@@ -232,15 +270,26 @@ class MovieUserRatingSeeder extends Seeder
             ->orderBy('rating')
             ->pluck('total', 'rating');
 
+        $total  = $distribution->sum();
         $labels = [1 => 'Odiei', 2 => 'Não gostei', 3 => 'Neutro', 4 => 'Gostei', 5 => 'Amei'];
 
-        $this->command->table(
-            ['Nota', 'Descrição', 'Quantidade'],
-            $distribution->map(fn($count, $rating) => [
+        $rows = $distribution->map(function ($count, $rating) use ($total, $labels) {
+            $pct      = $total > 0 ? round($count / $total * 100, 1) : 0.0;
+            $filled   = (int) round($pct / 5); // 0–20 blocos (cada bloco = 5%)
+            $empty    = 20 - $filled;
+            $bar      = str_repeat('#', $filled) . str_repeat('-', $empty);
+            return [
                 $rating,
                 $labels[$rating] ?? '?',
-                $count,
-            ])->values()->toArray()
+                (int) $count,
+                "{$pct}%",
+                "[{$bar}]",
+            ];
+        })->values()->toArray();
+
+        $this->command->table(
+            ['Nota', 'Descrição', 'Total', '%', 'Distribuição'],
+            $rows
         );
     }
 }
