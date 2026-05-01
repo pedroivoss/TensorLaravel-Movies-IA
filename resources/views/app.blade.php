@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
 
-    <title>{{ config('app.name', 'Movie Recommendation AI') }}</title>
+    <title>Movie Recommendation AI</title>
 
     {{--
         Vite injeta automaticamente o CSS do Ant Design e o bundle React.
