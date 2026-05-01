@@ -63,8 +63,8 @@ const makeContext = (movies, users) => {
     // somamos a idade e contamos quantas vezes esse filme foi assistido
     users.forEach(user => {
         (user.watchedMovies || []).forEach(wm => {
-            ageSums[wm] = (ageSums[wm] || 0) + user.age;
-            ageCounts[wm] = (ageCounts[wm] || 0) + 1;
+            ageSums[wm.name] = (ageSums[wm.name] || 0) + user.age;
+            ageCounts[wm.name] = (ageCounts[wm.name] || 0) + 1;
         });
     });
 
@@ -72,9 +72,9 @@ const makeContext = (movies, users) => {
     // assim, se um filme é mais assistido por jovens, a idade média será menor, e vice-versa
     // E normalizamos essa idade média para ficar entre 0 e 1, usando o minAge e maxAge do dataset
     const movieAvgAgeNorm = Object.fromEntries(
-        movies.map(m => {
-            const avgAge = ageCounts[m.id] ? ageSums[m.id] / ageCounts[m.id] : midAge;
-            return [m.id, normalize(avgAge, minAge, maxAge)];
+        movies.map(movie => {
+            const avgAge = ageCounts[movie.name] ? ageSums[movie.name] / ageCounts[movie.name] : midAge;
+            return [movie.name, normalize(avgAge, minAge, maxAge)];
         })
     )
 
@@ -156,6 +156,22 @@ function encodeUser(user, context) {
     ).reshape([1, context.dimentions]) // garante que a saída tenha o formato correto, mesmo que seja um vetor de zeros
 } // fim encodeUser
 
+function encodeUser(user, context) {
+    debugger
+    console.log('Encoding user:', user.name);
+}// fim encodeUser
+
+function createTrainingData(context) {
+    const input = []
+    const labels = []
+
+    context.users
+        .filter(user => user.watchedMovies.length) // só treina com usuários que assistiram filmes, para evitar dados de cold start
+        .forEach(user => {
+            const userVec = encodeUser(user, context).dataSync(); // converte o tensor para array normal
+        })
+
+}// fim createTrainingData
 
 window.trainModel = async function trainModel() {
     console.log('Training model with users');
@@ -178,7 +194,9 @@ window.trainModel = async function trainModel() {
         }
     })
 
-    debugger
+    _globalCtx = context;
+
+    const trainData = createTrainingData(context);
 
     // treino fake só pra testar gráfico
     for (let epoch = 1; epoch <= 50; epoch++) {

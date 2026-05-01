@@ -41,7 +41,7 @@ class UserController extends Controller
                     'email'           => $user->email,
                     'favorite_genres' => $user->favorite_genres ?? [],
                     'ratings_count'   => $user->ratings_count,
-                    'watchedMovies'   => $user->ratedMovies->pluck('id')->toArray(), // IDs dos filmes assistidos
+                    'watchedMovies'   => $user->ratedMovies->toArray(), // IDs dos filmes assistidos
                     // Cold Start: sem gêneros E sem histórico — a rede usará tf.zeros()
                     'is_cold_start'   => empty($user->favorite_genres) && $user->ratings_count === 0,
                 ];
