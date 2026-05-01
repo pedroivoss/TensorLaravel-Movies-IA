@@ -339,7 +339,7 @@ async function loadMovies() {
         const res = await fetch('/api/movies', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': CSRF_TOKEN },
-            body: JSON.stringify({ search: app.searchQuery, per_page: 50 }),
+            body: JSON.stringify({ search: app.searchQuery }),
         });
 
         const data = await res.json();

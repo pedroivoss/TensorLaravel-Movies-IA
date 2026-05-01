@@ -1,23 +1,24 @@
-async function treinarModelo() {
+importScripts('https://cdn.jsdelivr.net/npm/@tensorflow/tfjs');
 
-    let _globalCtx = {}
-    let _model = null
+let _globalCtx = {};
 
-    const WEIGHTS = {
-        category: 0.4,
-        price: 0.2,
-        age: 0.1
-    }
+let _model = null
 
-    //pega dados dos usuarios
-    const
+//Normaliza um valor entre 0 e 1, para evitar que a rede precise lidar com escalas diferentes
+//exemplo de idade entre 18 e 65, ou preço entre 10 e 1000
+//entao a idade 18 vira 0, a idade 65 vira 1, e a idade 40 vira algo em torno de 0.4
 
+const normalize = (value, min, max) => (value - min) / (max - min) || 1
+
+const makeContext = (movies, users) => {
+
+}
+
+async function trainModel() {
     return new Promise((resolve) => {
-        $('#btn-treinar').prop('disabled', true).text('Treinando...');
-        console.log('Iniciando criação do modelo...');
+        console.log('Training model with users:', app.users, 'and movies:', app.movies);
 
-        $('#btn-treinar').text('Treinado!');
-        $('#btn-prever').prop('disabled', false);
+
 
         resolve(); // Avisa o await que pode continuar
     });
