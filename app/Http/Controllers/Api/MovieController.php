@@ -17,8 +17,8 @@ use Illuminate\Http\Request;
  */
 class MovieController extends Controller
 {
-    // Número de filmes por página na busca geral
-    private const PER_PAGE = 20;
+    private const PER_PAGE     = 20;
+    private const MAX_PER_PAGE = 100;
 
     /**
      * Busca filmes por título (ou lista os mais bem avaliados se sem query).
@@ -42,7 +42,8 @@ class MovieController extends Controller
             $query->whereNotNull('rate')->orderByDesc('rate');
         }
 
-        $paginated = $query->paginate(self::PER_PAGE);
+        $perPage   = min((int) $request->query('per_page', self::PER_PAGE), self::MAX_PER_PAGE);
+        $paginated = $query->paginate($perPage);
 
         return response()->json([
             'data'         => $paginated->items(),
