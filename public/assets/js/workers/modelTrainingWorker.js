@@ -159,9 +159,35 @@ function createTrainingData(context) {
         .filter(user => user.watchedMovies.length) // só treina com usuários que assistiram filmes, para evitar dados de cold start
         .forEach(user => {
             const userVec = encodeUser(user, context).dataSync(); // converte o tensor para array normal
+
+            context.movies.forEach(movie => {
+
+                const movieVec = encodeMovie(movie, context).dataSync(); // converte o tensor para array normal
+
+                // Aqui você pode adicionar a lógica para criar os dados de treinamento usando userVector e movieVector
+                const label = user.watchedMovies.some(wm => wm.name === movie.name) ? 1 : 0; // exemplo: 1 se o usuário assistiu o filme, 0 caso contrário
+
+                //combinar usuario + filme em um único vetor de entrada para a rede neural
+                const inputVec = [...userVec, ...movieVec];
+
+                input.push(inputVec);
+                labels.push(label);
+
+                console.log(`User: ${user.name}, Movie: ${movie.name}, Label: ${label}`);
+
+            })
+
         })
 
-    debugger
+    console.log('cheguei aqui')
+
+    return {
+        input: tf.tensor2d(input),
+        labels: tf.tensor1d(labels),
+        inputShape: [context.dimentions * 2], // usuário + filme
+    }
+
+
 }// fim createTrainingData
 
 window.trainModel = async function trainModel() {
