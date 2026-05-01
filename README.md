@@ -1,118 +1,95 @@
 # 🎬 TensorLaravel Movies IA
 
-Sistema de Recomendação de Filmes com **Laravel 13**, **React 18**, **Ant Design 5**, **TensorFlow.js 4** e **MySQL 9**.
+Sistema de Recomendação de Filmes com **Laravel**, **React 18**, **Ant Design 5**, **Bootstrap 5** e **MySQL**.
 
-Projeto de pós-graduação: demonstra como uma rede neural pode ser **treinada diretamente no browser** via Web Worker com TF.js, enquanto o Laravel 13 serve os dados e persiste o modelo treinado.
+Projeto de pós-graduação que demonstra duas abordagens de frontend consumindo a mesma API REST Laravel:  
+uma **SPA React** completa com Ant Design e uma **interface Blade** com Bootstrap 5 + jQuery.  
+O objetivo final é integrar **TensorFlow.js** para treinar e executar o modelo de recomendação diretamente no browser.
 
 ---
 
 ## 🏗️ Arquitetura
 
 ```
-┌────────────────────────────────────────────────────────────────┐
-│  Browser (React 18 + Ant Design 5)                             │
-│                                                                │
-│  ┌─────────────────────────────────────────────────────────┐   │
-│  │  Web Worker — TensorFlow.js 4 (WebGL)                   │   │
-│  │                                                         │   │
-│  │  • makeContext()      → min/max features, mapas de ID   │   │
-│  │  • encodeUser()       → vetor 28-dim do usuário         │   │
-│  │  • encodeMovie()      → vetor 29-dim do filme           │   │
-│  │  • buildAndTrain()    → tf.Sequential (57→128→64→32→1)  │   │
-│  │  • model.predict()    → scores em batch (WebGL)         │   │
-│  │  • saveModelToServer()→ POST /api/model (base64)        │   │
-│  └──────────────────┬──────────────────────────────────────┘   │
-│                     │ postMessage (epochEnd, recommendations)   │
-│  ┌──────────────────▼──────────────────────────────────────┐   │
-│  │  RecommendationSystem.jsx                               │   │
-│  │                                                         │   │
-│  │  • Modal "Treinar IA" com tfjs-vis (loss + acurácia)    │   │
-│  │  • Select2 de usuários com avatares                     │   │
-│  │  • Painel de busca geral de filmes                      │   │
-│  │  • Painel de recomendações (TF.js ou Content-Based)     │   │
-│  └──────────────────┬──────────────────────────────────────┘   │
-└─────────────────────│──────────────────────────────────────────┘
-                      │ HTTP / JSON
-┌─────────────────────▼──────────────────────────────────────────┐
-│  Laravel 13 (API)                                              │
-│                                                                │
-│  GET  /api/training-data     → movies + users + ratings        │
-│  GET  /api/model/status      → modelo salvo?                   │
-│  GET  /api/model             → artefatos TF.js (base64)        │
-│  POST /api/model             → salva modelo treinado           │
-│  POST /api/embeddings/movies → salva vetores dos filmes        │
-│  GET  /api/users             → lista usuários                  │
-│  GET  /api/users/{id}        → perfil + filmes avaliados       │
-│  GET  /api/movies            → busca paginada de filmes        │
-│  GET  /api/recommendations/{user} → fallback content-based     │
-│  POST /api/ratings           → registra avaliação (1-5)        │
-│                                                                │
-│  Banco: MySQL 9                                                │
-│    movies          → 6.178 filmes (IMDB CSV)                   │
-│    users           → 42 usuários com perfis variados           │
-│    movie_user_ratings → 1.520 avaliações (1-5)                 │
-│    ai_models       → modelo TF.js serializado (JSON+base64)    │
-└────────────────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────────┐
+│  Browser                                                         │
+│                                                                  │
+│  ┌───────────────────────────┐   ┌──────────────────────────┐   │
+│  │  React 18 + Ant Design 5  │   │  Blade + Bootstrap 5     │   │
+│  │  /react-movie-ia          │   │  /blade-movie-ia         │   │
+│  │                           │   │                          │   │
+│  │  • Seletor de usuários    │   │  • Seletor de usuários   │   │
+│  │  • Busca paginada filmes  │   │  • Busca de filmes       │   │
+│  │  • Avaliação (1-5 ★)     │   │  • Filtros e ordenação   │   │
+│  │  • Recomendações          │   │  • Avaliação (1-5 ★)    │   │
+│  │    content-based          │   │  • Recomendações         │   │
+│  │                           │   │  • Modal Treinar Modelo  │   │
+│  │                           │   │    (TF.js via CDN — WIP) │   │
+│  └─────────────┬─────────────┘   └────────────┬─────────────┘   │
+└────────────────│────────────────────────────────│────────────────┘
+                 │  HTTP / JSON                   │
+┌────────────────▼────────────────────────────────▼────────────────┐
+│  Laravel — API REST                                               │
+│                                                                   │
+│  GET  /api/users                  → lista usuários               │
+│  GET  /api/users/{id}             → perfil + filmes avaliados    │
+│  GET  /api/movies?search=&page=   → busca paginada de filmes     │
+│  GET  /api/recommendations/{user} → content-based filtering      │
+│  POST /api/ratings                → registra avaliação (1-5)     │
+│                                                                   │
+│  MySQL                                                            │
+│    movies               → 6.178 filmes (IMDB CSV)                │
+│    users                → 42 usuários com perfis variados        │
+│    movie_user_ratings   → avaliações 1-5 ★                      │
+└───────────────────────────────────────────────────────────────────┘
 ```
 
 ### Stack
 
-| Camada     | Tecnologia              | Versão |
-| ---------- | ----------------------- | ------ |
-| Backend    | Laravel                 | 13     |
-| Banco      | MySQL                   | 9      |
-| Frontend   | React + Vite            | 18 / 5 |
-| UI         | Ant Design              | 5.x    |
-| IA Browser | TensorFlow.js           | 4.x    |
-| Vis        | @tensorflow/tfjs-vis    | 2.x    |
+| Camada         | Tecnologia                     |
+| -------------- | ------------------------------ |
+| Backend        | Laravel                        |
+| Banco          | MySQL                          |
+| Frontend React | React 18 + Vite                |
+| UI React       | Ant Design 5 + icons           |
+| Frontend Blade | Bootstrap 5 + jQuery + Select2 |
+| IA (em breve)  | TensorFlow.js (CDN)            |
 
 ---
 
-## 🧠 Rede Neural
+## 🌐 Rotas Web
 
-```
-Input (57 features):
-  [ age_norm, genres_user×27, rate_norm, duration_norm, genres_movie×27 ]
-    └── 28 dims (usuário) ──┘  └──────────── 29 dims (filme) ────────────┘
+| Rota               | Descrição                                         |
+| ------------------ | ------------------------------------------------- |
+| `GET /`            | Welcome page (Laravel default)                    |
+| `GET /react-movie-ia` | SPA React com Ant Design                       |
+| `GET /blade-movie-ia` | Interface Blade com Bootstrap 5                |
 
-Dense(128, relu)   ← captura combinações gênero × idade × qualidade
-Dense(64,  relu)   ← refina e comprime representações
-Dense(32,  relu)   ← embedding latente do par (usuário, filme)
-Dense(1, sigmoid)  ← probabilidade de gostar [0.0 .. 1.0]
+---
 
-Loss:      binaryCrossentropy
-Optimizer: Adam(lr=0.001)
-Épocas:    30 | Batch: 32 | Shuffle: true
+## 📡 API Endpoints
 
-Label:  (rating - 1) / 4   →  1★=0.00  3★=0.50  5★=1.00
-```
+| Método | Rota                          | Descrição                                       |
+| ------ | ----------------------------- | ----------------------------------------------- |
+| GET    | `/api/users`                  | Lista usuários com contagem de avaliações       |
+| GET    | `/api/users/{id}`             | Perfil + IDs de filmes já avaliados             |
+| GET    | `/api/movies`                 | Busca paginada (`?search=`, `?page=`, `?per_page=`) |
+| GET    | `/api/recommendations/{user}` | Recomendações por content-based filtering       |
+| POST   | `/api/ratings`                | Registra / atualiza avaliação (1-5 estrelas)    |
 
-### Fluxo de recomendação com TF.js
+### `POST /api/ratings` — body esperado
 
-```
-1. Treinar IA (modal):
-   React → GET /api/training-data
-   React → Worker: { action: 'TRAIN_MODEL', movies, users, ratings }
-   Worker: treina modelo (WebGL) + envia epochEnd por época → tfjs-vis
-   Worker → POST /api/model         (artefatos base64)
-   Worker → POST /api/embeddings/movies (vetores 29-dim dos filmes)
-   Worker → React: { type: 'TRAINING_COMPLETE' }
-
-2. Recomendar (usuário selecionado):
-   React → Worker: { action: 'RECOMMEND', user }
-   Worker: model.predict([6178 filmes × 57 features]) em batch WebGL
-   Worker → React: { type: 'RECOMMENDATIONS', recommendations: [...top20] }
-
-3. Recarregar após refresh:
-   React → GET /api/model/status → trained: true
-   React → Worker: { action: 'LOAD_MODEL' }
-   Worker → GET /api/model → reconstrói tf.loadLayersModel(tf.io.fromMemory(...))
-   Worker → React: { type: 'MODEL_LOADED', success: true }
+```json
+{
+  "user_id":  1,
+  "movie_id": 42,
+  "rating":   4
+}
 ```
 
 ---
 
-## 🚀 Setup completo
+## 🚀 Setup
 
 ### 1. Clonar e instalar PHP
 
@@ -124,7 +101,7 @@ cp .env.example .env
 php artisan key:generate
 ```
 
-### 2. Configurar MySQL 9
+### 2. Configurar banco de dados
 
 ```env
 DB_CONNECTION=mysql
@@ -135,76 +112,51 @@ DB_USERNAME=root
 DB_PASSWORD=sua_senha
 ```
 
-### 3. Criar tabelas
+### 3. Criar tabelas e popular banco
 
 ```bash
 php artisan migrate:fresh
+php artisan movies:import   # importa 6.178 filmes do IMDB CSV
+php artisan db:seed         # cria 42 usuários e avaliações
 ```
 
 Tabelas criadas:
-- `users` — 42 usuários com perfis e gêneros favoritos
-- `movies` — 6.178 filmes do IMDB (com coluna `embedding` para vetores TF.js)
-- `movie_user_ratings` — 1.520 avaliações (1-5 estrelas)
-- `ai_models` — modelo TF.js serializado (topologia + pesos em base64)
 
-### 4. Importar filmes
+| Tabela                | Conteúdo                                    |
+| --------------------- | ------------------------------------------- |
+| `users`               | 42 usuários com perfis e gêneros favoritos  |
+| `movies`              | 6.178 filmes do IMDB                        |
+| `movie_user_ratings`  | Avaliações 1-5 estrelas                     |
+
+### 4. Instalar dependências JavaScript
 
 ```bash
-php artisan movies:import
+npm install
 ```
 
-### 5. Popular usuários e avaliações
+### 5. Rodar os servidores
 
 ```bash
-php artisan db:seed
-```
-
-42 usuários com 11 personas variadas, 1.520 avaliações coerentes para treinamento.
-
-### 6. Instalar dependências JavaScript
-
-```bash
-npm install --legacy-peer-deps
-```
-
-### 7. Rodar os servidores
-
-```bash
-# Terminal 1 — Laravel
+# Terminal 1 — Laravel (porta 8000 por padrão)
 php artisan serve
 
-# Terminal 2 — Vite (HMR)
+# Terminal 2 — Vite (HMR para o React)
 npm run dev
 ```
 
-Acesse: **http://localhost:8000**
+Acesse:
+- React → **http://localhost:8000/react-movie-ia**
+- Blade → **http://localhost:8000/blade-movie-ia**
 
 ---
 
-## 🔁 Reset completo
+## 🔁 Reset completo do banco
 
 ```bash
 php artisan migrate:fresh
 php artisan movies:import
 php artisan db:seed
 ```
-
----
-
-## 📡 API Endpoints
-
-| Método | Rota                          | Descrição                                     |
-| ------ | ----------------------------- | --------------------------------------------- |
-| GET    | `/api/users`                  | Lista usuários com contagem de avaliações     |
-| GET    | `/api/users/{id}`             | Perfil + IDs de filmes já avaliados           |
-| GET    | `/api/movies?search=&page=`   | Busca paginada de filmes                      |
-| GET    | `/api/recommendations/{user}` | Fallback content-based (quando sem modelo)    |
-| POST   | `/api/ratings`                | Registra/atualiza avaliação (1-5)             |
-| GET    | `/api/training-data`          | Dataset completo p/ o Worker treinar          |
-| GET    | `/api/model/status`           | Verifica se modelo treinado existe            |
-| GET    | `/api/model`                  | Retorna artefatos do modelo (base64)          |
-| POST   | `/api/model`                  | Salva modelo treinado pelo Worker             |
-| POST   | `/api/embeddings/movies`      | Salva vetores de feature dos filmes em lote   |
 
 ---
 
@@ -212,58 +164,109 @@ php artisan db:seed
 
 ```
 TensorLaravel-Movies-IA/
-├── app/Http/Controllers/Api/
-│   ├── UserController.php
-│   ├── MovieController.php
-│   ├── RatingController.php
-│   ├── RecommendationController.php    ← fallback content-based
-│   └── TrainingController.php          ← training-data, model save/load, embeddings
-├── app/Models/
-│   ├── User.php | Movie.php | MovieUserRating.php
-│   └── AiModel.php                     ← modelo TF.js no banco
-├── database/migrations/
-│   └── ..._create_ai_models_table.php  ← tabela de persistência do modelo
-├── resources/js/
-│   ├── app.jsx                         ← React entry point
-│   ├── events/
-│   │   └── workerEvents.js             ← contrato de eventos UI ↔ Worker
-│   ├── workers/
-│   │   └── modelTrainingWorker.js      ← TF.js Web Worker (treina + recomenda)
-│   ├── services/api.js                 ← chamadas HTTP para a API Laravel
-│   ├── Components/MovieCard.jsx
-│   └── Pages/RecommendationSystem.jsx  ← SPA principal com modal de treinamento
-├── routes/api.php
-└── imdb.csv                            ← 6.178 filmes IMDB
+├── app/
+│   ├── Http/Controllers/
+│   │   ├── PageBladeController.php      ← serve /blade-movie-ia
+│   │   ├── PageReactController.php      ← serve /react-movie-ia
+│   │   └── Api/
+│   │       ├── UserController.php
+│   │       ├── MovieController.php
+│   │       ├── RatingController.php
+│   │       └── RecommendationController.php
+│   └── Models/
+│       ├── User.php
+│       ├── Movie.php
+│       └── MovieUserRating.php
+├── resources/
+│   ├── js/
+│   │   ├── app.jsx                      ← entry point React
+│   │   ├── Pages/
+│   │   │   └── RecommendationSystem.jsx ← SPA principal
+│   │   ├── components/
+│   │   │   ├── MovieCard.jsx
+│   │   │   └── UserCard.jsx
+│   │   ├── services/
+│   │   │   └── api.js                   ← chamadas HTTP
+│   │   ├── workers/                     ← (reservado — TF.js Web Worker em breve)
+│   │   └── events/                      ← (reservado — contrato UI ↔ Worker em breve)
+│   └── views/
+│       ├── app.blade.php                ← entry point React (Vite)
+│       ├── teste-ia.blade.php           ← interface Blade completa
+│       └── modals/
+│           └── treinar-modal.blade.php  ← modal TF.js (WIP)
+├── public/assets/js/
+│   └── treinamento.js                   ← lógica TF.js em desenvolvimento
+├── routes/
+│   ├── web.php
+│   └── api.php
+└── imdb.csv                             ← 6.178 filmes IMDB (fonte do import)
 ```
 
 ---
 
-## 🧩 Casos de Borda Modelados
+## 🔜 Próxima etapa: TF.js no browser
 
-| Cenário              | Tratamento                                                |
-| -------------------- | --------------------------------------------------------- |
-| Cold Start absoluto  | `favorite_genres = null` → `encodeUser` retorna zeros    |
-| Sem histórico        | Usuário com gêneros mas sem avaliações (não treina)       |
-| Filme sem gênero     | `genre = null` → `genresToOneHot` retorna zeros          |
-| Filme sem nota       | `rate = null` → normaliza 5.0 (mediana IMDB)             |
-| Refresh de página    | Worker auto-carrega modelo do servidor via `LOAD_MODEL`   |
-| Re-treinamento       | Sobrescreve modelo e embeddings no banco (updateOrCreate) |
+O modal **"Treinar Modelo"** na interface Blade está preparado para receber a lógica de treinamento em `public/assets/js/treinamento.js`. A integração planejada é:
+
+```
+1. Treinar IA (modal):
+   Blade → GET /api/users + /api/movies + /api/ratings
+   treinamento.js: monta dataset → treina tf.Sequential no browser
+   Progresso exibido no log terminal do modal
+
+2. Recomendar:
+   Substitui o content-based atual por model.predict()
+   executando localmente via TensorFlow.js (sem novo endpoint)
+```
+
+A arquitetura de rede planejada:
+
+```
+Input: [ age_norm, genres_user×N, rate_norm, duration_norm, genres_movie×N ]
+
+Dense(128, relu)
+Dense(64,  relu)
+Dense(32,  relu)
+Dense(1, sigmoid) → probabilidade de gostar [0.0 .. 1.0]
+
+Loss:      binaryCrossentropy
+Optimizer: Adam
+Label:     (rating - 1) / 4  →  1★=0.00  3★=0.50  5★=1.00
+```
+
+---
+
+## 🧩 Algoritmo atual de recomendação
+
+Enquanto o TF.js não está integrado, as recomendações usam **content-based filtering** simples:
+
+| Situação          | Comportamento                                                   |
+| ----------------- | --------------------------------------------------------------- |
+| Usuário com gêneros | Filtra filmes por gêneros favoritos, ordena por nota IMDB    |
+| Cold Start (sem gêneros e sem histórico) | Top 20 filmes mais bem avaliados do IMDB |
+| Filmes já avaliados | Excluídos das recomendações                                |
 
 ---
 
 ## 📦 Dependências principais
 
-### PHP (composer)
-- `laravel/framework` ^13.0
+### PHP (Composer)
+
+- `laravel/framework`
 
 ### JavaScript (npm)
-- `react` + `react-dom` ^18.3
-- `antd` ^5.22 + `@ant-design/icons` ^5.5
-- `@tensorflow/tfjs` ^4.x
-- `@tensorflow/tfjs-vis` ^2.x
-- `axios` ^1.7
-- `vite` ^5.4 + `@vitejs/plugin-react` ^4.3
-- `laravel-vite-plugin` ^1.3
+
+- `react` + `react-dom`
+- `antd` + `@ant-design/icons`
+- `axios`
+- `vite` + `@vitejs/plugin-react` + `laravel-vite-plugin`
+
+### CDN (interface Blade)
+
+- Bootstrap 5
+- Bootstrap Icons
+- jQuery + Select2
+- `@tensorflow/tfjs` + `@tensorflow/tfjs-vis`
 
 ---
 

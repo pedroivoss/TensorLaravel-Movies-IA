@@ -43,7 +43,12 @@ class MovieController extends Controller
         }
 
         $perPage   = min((int) $request->query('per_page', self::PER_PAGE), self::MAX_PER_PAGE);
-        $paginated = $query->paginate($perPage);
+
+        if ($perPage === 'all') {
+            $paginated = $query->get();
+        } else {
+            $paginated = $query->paginate($perPage);
+        }
 
         return response()->json([
             'data'         => $paginated->items(),

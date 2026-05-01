@@ -146,6 +146,7 @@ function renderUserProfile() {
 }
 
 function getFilteredMovies() {
+
     let list = [...app.movies];
     const ratedIds = app.userDetail?.rated_movie_ids ?? [];
 
@@ -306,8 +307,14 @@ async function loadMovies(query = '') {
     $('#movies-empty').addClass('d-none');
     $('#movies-list').html('');
 
-    const url = `/api/movies?per_page=50${query ? `&search=${encodeURIComponent(query)}` : ''}`;
-    const res = await fetch(url);
+    const onlyWatched = app.filterWatched;
+
+    const res = await fetch('/api/movies', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': CSRF_TOKEN },
+        body: JSON.stringify({ search: query, only_watched: onlyWatched }),
+    });
+
     const data = await res.json();
 
     app.movies = data.data ?? [];

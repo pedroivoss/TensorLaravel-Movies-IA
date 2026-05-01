@@ -468,8 +468,6 @@
 <script src="{{ asset('assets/js/workers/modelTrainingWorker.js') }}?v={{ filemtime(public_path('assets/js/workers/modelTrainingWorker.js')) }}"></script>
 <script src="{{ asset('assets/js/pageBlade.js') }}?v={{ filemtime(public_path('assets/js/pageBlade.js')) }}"></script>
 
-<script></script>
-
 <script>
     /* ════════════════════════════════════════════════════════════════════════════
     Events
