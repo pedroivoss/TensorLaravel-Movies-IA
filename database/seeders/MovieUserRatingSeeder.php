@@ -145,8 +145,17 @@ class MovieUserRatingSeeder extends Seeder
     }
 
     // ─────────────────────────────────────────────────────────────────────────
-    // Métodos privados
+    // Métodos protegidos / privados
     // ─────────────────────────────────────────────────────────────────────────
+
+    /**
+     * Retorna quantos filmes cada usuário avalia.
+     * Subclasses podem sobrescrever para reduzir o volume (ex: modo sample).
+     */
+    protected function getRatingsPerUser(): int
+    {
+        return self::RATINGS_PER_USER;
+    }
 
     /**
      * Gera todas as avaliações de um único usuário.
@@ -165,7 +174,7 @@ class MovieUserRatingSeeder extends Seeder
         $favoriteGenres = $user->favorite_genres ?? [];
 
         $selectedMovies = $allMovies->random(
-            min(self::RATINGS_PER_USER, $allMovies->count())
+            min($this->getRatingsPerUser(), $allMovies->count())
         );
 
         $now     = now()->toDateTimeString();

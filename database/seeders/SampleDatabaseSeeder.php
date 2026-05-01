@@ -21,9 +21,12 @@ use Illuminate\Database\Seeder;
  *   php artisan db:seed --class=SampleDatabaseSeeder
  *
  * ── Resultado esperado ────────────────────────────────────────────────────────
- *   movies              →  20 filmes (1-2 por gênero)
+ *   movies              →  20 filmes (1-2 por gênero, variados)
  *   users               →   7 usuários
- *   movie_user_ratings  → ~100 avaliações (5 usuários × até 20 filmes)
+ *                             5 com avaliações  (Jovem Aventureiro, Cinéfilo,
+ *                                                Família, Fã de Terror, Documentarista)
+ *                             2 sem relação com filmes (Cold Start + Sem Histórico)
+ *   movie_user_ratings  → ~25 avaliações (5 usuários × até 5 filmes cada)
  *
  * ── Fluxo completo (sem flag) ─────────────────────────────────────────────────
  *   php artisan migrate:fresh
@@ -56,7 +59,7 @@ class SampleDatabaseSeeder extends Seeder
         $this->call(SampleUserSeeder::class);
         $this->command->newLine();
 
-        $this->call(MovieUserRatingSeeder::class);
+        $this->call(SampleMovieUserRatingSeeder::class);
 
         $this->command->newLine();
         $this->command->info('╔══════════════════════════════════════════════╗');

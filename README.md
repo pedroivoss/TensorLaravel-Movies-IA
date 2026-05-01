@@ -114,19 +114,47 @@ DB_PASSWORD=sua_senha
 
 ### 3. Criar tabelas e popular banco
 
+#### Fluxo completo (~6 mil filmes, 42 usuários)
+
 ```bash
 php artisan migrate:fresh
 php artisan movies:import   # importa 6.178 filmes do IMDB CSV
 php artisan db:seed         # cria 42 usuários e avaliações
 ```
 
-Tabelas criadas:
-
 | Tabela                | Conteúdo                                    |
 | --------------------- | ------------------------------------------- |
 | `users`               | 42 usuários com perfis e gêneros favoritos  |
 | `movies`              | 6.178 filmes do IMDB                        |
-| `movie_user_ratings`  | Avaliações 1-5 estrelas                     |
+| `movie_user_ratings`  | ~1.600 avaliações 1–5 estrelas              |
+
+#### Fluxo de amostra — modo rápido para testes do modelo
+
+Ideal para iterar no TF.js sem esperar a importação e o seed completos.
+
+```bash
+php artisan migrate:fresh
+php artisan movies:import --sample                   # 20 filmes variados por gênero
+php artisan db:seed --class=SampleDatabaseSeeder     # 7 usuários, ~25 avaliações
+```
+
+| Tabela                | Conteúdo (sample)                                              |
+| --------------------- | -------------------------------------------------------------- |
+| `movies`              | 20 filmes, 1–2 por gênero (round-robin no CSV)                |
+| `users`               | 7 usuários — 5 com avaliações + 2 sem relação com filmes       |
+| `movie_user_ratings`  | ~25 avaliações (5 usuários × até 5 filmes cada)               |
+
+Os 2 usuários sem relação com filmes simulam casos de borda para a rede neural:
+- **Cold Start absoluto** — sem gêneros favoritos e sem avaliações (`favorite_genres = NULL`)
+- **Sem Histórico** — tem gêneros favoritos declarados, mas nunca avaliou nenhum filme
+
+Para resetar e re-popular no modo sample:
+
+```bash
+php artisan migrate:fresh
+php artisan movies:import --fresh --sample
+php artisan db:seed --class=SampleDatabaseSeeder
+```
 
 ### 4. Instalar dependências JavaScript
 
@@ -150,12 +178,18 @@ Acesse:
 
 ---
 
-## 🔁 Reset completo do banco
+## 🔁 Reset do banco
 
 ```bash
+# Completo (produção / avaliação final)
 php artisan migrate:fresh
 php artisan movies:import
 php artisan db:seed
+
+# Amostra (desenvolvimento / testes do modelo TF.js)
+php artisan migrate:fresh
+php artisan movies:import --sample
+php artisan db:seed --class=SampleDatabaseSeeder
 ```
 
 ---
