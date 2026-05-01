@@ -53,13 +53,12 @@
 
                 {{-- Log container --}}
                 <div style="font-size:12px;color:#00000073;margin-bottom:6px;">
-                    <i class="bi bi-terminal me-1"></i> Log de Treinamento
+                    <i class="bi bi-graph-up-arrow me-1"></i> Gráficos de Performance
                 </div>
-                <div id="log-container"
-                     style="height:180px;overflow-y:auto;font-family:'SFMono-Regular',Consolas,monospace;
-                            font-size:12px;background:#141414;color:#52c41a;padding:10px 12px;
-                            border-radius:6px;border:1px solid #303030;">
-                    Aguardando início...
+                <div id="visor-container"
+                    style="height:320px; overflow-y:auto; background:#ffffff;
+                            border-radius:6px; border:1px solid #d9d9d9; padding:10px;">
+                    <span style="font-size:12px; color:#bfbfbf;">Os gráficos aparecerão aqui ao iniciar o treino...</span>
                 </div>
 
             </div>

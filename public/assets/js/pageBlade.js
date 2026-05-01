@@ -405,4 +405,3 @@ function updateMoviesPanel() {
     $('#filter-watched').prop('disabled', !hasUser);
     renderMovies();
 }
-

@@ -141,13 +141,18 @@
 @include('modals.treinar-modal')
 
 <!-- ── Scripts ──────────────────────────────────────────────────────────────── -->
-{{--<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest"></script>
-<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-vis@latest"></script>--}}
+{{--<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest"></script>--}}
+<!-- TensorFlow.js Core -->
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs/dist/tf.min.js"></script>
+<!-- Biblioteca de Visualização (Visor) -->
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-vis/dist/tfjs-vis.umd.min.js"></script>
+
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script src="{{ asset('assets/js/pageBlade.js') }}?v={{ filemtime(public_path('assets/js/pageBlade.js')) }}"></script>
+<script src="{{ asset('assets/js/TFVisorView.js') }}?v={{ filemtime(public_path('assets/js/TFVisorView.js')) }}"></script>
 <script src="{{ asset('assets/js/workers/modelTrainingWorker.js') }}?v={{ filemtime(public_path('assets/js/workers/modelTrainingWorker.js')) }}"></script>
 
 <script>
@@ -200,20 +205,9 @@
             await saveRating(mid, rating);
         });
 
-        $(document).on('click', '#btn-treinar', function () {
-            Swal.fire({
-                title: 'Treinar modelo de recomendação',
-                text: 'Tem certeza que deseja iniciar o treinamento? Isso pode levar alguns minutos e usar bastante CPU.',
-                icon: 'warning',
-                showCancelButton: true,
-                confirmButtonText: 'Sim, treinar!',
-                cancelButtonText: 'Cancelar'
-            }).then(async (result) => {
-                if (result.isConfirmed) {
-                    await trainModel();
-                }
-            })
-        })
+        $(document).on('click', '#btn-treinar', async function () {
+            await trainModel();
+        });
 
     });
 </script>
