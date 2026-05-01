@@ -138,27 +138,17 @@ function encodeMovie(movie, context) {
 }// fim encodeMovie
 
 function encodeUser(user, context) {
-    if (user.watchedMovies.length || user.is_cold_start) {
+
+    if (user.watchedMovies.length) {
         return tf.stack(
-            user.watchedMovies.map(movie => encodeMovie(movie, context))
-        ).mean(0) // se o nao tiver assistido nenhum filme, retorna um vetor de zeros (cold start)
-            .reshape([1, context.dimentions]) // garante que a saída tenha o formato correto, mesmo que seja um vetor de zeros
+            user.watchedMovies.map(movie => {
+                return encodeMovie(movie, context);
+            })
+        );
+    } else {
+        // Cold Start: usuário sem histórico, então usamos tf.zeros() para criar um vetor neutro
+        return tf.zeros([context.dimentions]);
     }
-
-    return tf.concat1d(
-        [
-            tf.tensor1d([
-                normalize(user.age, context.minAge, context.maxAge) * WEIGHTS.age,
-            ]),
-            tf.zeros([context.numGenres]).cast('float32').mul(WEIGHTS.genre), // vetor de zeros para os gêneros, pois não temos essa informação do usuário
-            tf.zeros([1]).cast('float32').mul(WEIGHTS.rating) // vetor de zeros para a avaliação, pois não temos essa informação do usuário
-        ]
-    ).reshape([1, context.dimentions]) // garante que a saída tenha o formato correto, mesmo que seja um vetor de zeros
-} // fim encodeUser
-
-function encodeUser(user, context) {
-    debugger
-    console.log('Encoding user:', user.name);
 }// fim encodeUser
 
 function createTrainingData(context) {
@@ -171,6 +161,7 @@ function createTrainingData(context) {
             const userVec = encodeUser(user, context).dataSync(); // converte o tensor para array normal
         })
 
+    debugger
 }// fim createTrainingData
 
 window.trainModel = async function trainModel() {
@@ -180,9 +171,6 @@ window.trainModel = async function trainModel() {
 
     const movies = window.app?.movies ?? app.movies;
     const users = window.app?.users ?? app.users;
-
-    console.log('Movies:', movies.length);
-    console.log('Users:', users.length);
 
     const context = makeContext(movies, users);
 
