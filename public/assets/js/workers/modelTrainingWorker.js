@@ -87,7 +87,7 @@ const makeContext = (movies, users) => {
 
     }
 
-}
+}// fim makeContext
 
 window.trainModel = async function trainModel() {
     console.log('Training model with users');
