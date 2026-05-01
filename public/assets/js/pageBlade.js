@@ -146,19 +146,15 @@ function renderUserProfile() {
 }
 
 function getFilteredMovies() {
-
+    // O filtro "só assistidos" é resolvido pelo servidor (POST /api/movies com ids).
+    // Aqui só aplicamos a ordenação client-side sobre o que já foi carregado.
     let list = [...app.movies];
-    const ratedIds = app.userDetail?.rated_movie_ids ?? [];
 
-    if (app.filterWatched) {
-        list = list.filter(m => ratedIds.includes(m.id));
-    }
     if (app.sortBy === 'date') {
         list.sort((a, b) => (b.release_year || 0) - (a.release_year || 0));
     } else if (app.sortBy === 'az') {
         list.sort((a, b) => a.name.localeCompare(b.name));
     }
-    // 'rate' já vem ordenado da API
     return list;
 }
 
@@ -252,9 +248,13 @@ async function selectUser(userId) {
         app.selectedUser = null;
         app.userDetail = null;
         app.reco = [];
+        // Reseta o filtro "só assistidos" ao desselecionar usuário
+        app.filterWatched = false;
+        $('#filter-watched').prop('checked', false);
         renderUserProfile();
         resetRecoPanel();
         updateMoviesPanel();
+        await loadMovies(); // volta para o browse normal
         return;
     }
 
@@ -276,7 +276,13 @@ async function selectUser(userId) {
         app.userDetail = detailRes.value;
         renderUserProfile();
         updateMoviesPanel();
-        renderMovies(); // re-render para atualizar badges "Assistido"
+        // Se "só assistidos" estiver ativo, refaz a busca no servidor com os IDs do usuário.
+        // Caso contrário, apenas re-renderiza para atualizar os badges "Assistido".
+        if (app.filterWatched) {
+            await loadMovies();
+        } else {
+            renderMovies();
+        }
     }
 
     if (recoRes.status === 'fulfilled') {
@@ -302,27 +308,46 @@ async function selectUser(userId) {
     }
 }
 
-async function loadMovies(query = '') {
+async function loadMovies() {
     $('#movies-loading').removeClass('d-none');
     $('#movies-empty').addClass('d-none');
     $('#movies-list').html('');
 
-    const onlyWatched = app.filterWatched;
+    const ratedIds = app.userDetail?.rated_movie_ids ?? [];
 
-    const res = await fetch('/api/movies', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': CSRF_TOKEN },
-        body: JSON.stringify({ search: query, only_watched: onlyWatched }),
-    });
+    if (app.filterWatched) {
+        // POST: busca no servidor TODOS os filmes assistidos pelo usuário (sem limite)
+        if (ratedIds.length === 0) {
+            app.movies = [];
+            $('#movies-loading').addClass('d-none');
+            $('#movies-total-tag').text('0 filmes assistidos').removeClass('d-none');
+            renderMovies();
+            return;
+        }
 
-    const data = await res.json();
+        const res = await fetch('/api/movies', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': CSRF_TOKEN },
+            body: JSON.stringify({ ids: ratedIds, search: app.searchQuery }),
+        });
+        const data = await res.json();
+        app.movies = data.data ?? [];
+        $('#movies-total-tag')
+            .text(`${(data.total ?? 0).toLocaleString('pt-BR')} filmes assistidos`)
+            .removeClass('d-none');
+    } else {
+        const res = await fetch('/api/movies', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': CSRF_TOKEN },
+            body: JSON.stringify({ search: app.searchQuery, per_page: 50 }),
+        });
 
-    app.movies = data.data ?? [];
-
-    const total = data.total ?? 0;
-    $('#movies-total-tag')
-        .text(`${total.toLocaleString('pt-BR')} filmes`)
-        .removeClass('d-none');
+        const data = await res.json();
+        app.movies = data.data ?? [];
+        $('#movies-total-tag')
+            .text(`${(data.total ?? 0).toLocaleString('pt-BR')} filmes`)
+            .removeClass('d-none');
+    }
 
     renderMovies();
 }

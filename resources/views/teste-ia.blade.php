@@ -163,20 +163,20 @@
             selectUser($(this).val());
         });
 
-        // Busca com debounce
+        // Busca com debounce — re-fetch no servidor
         $('#search-movies').on('input', function () {
             clearTimeout(app.searchTimer);
             app.searchQuery = $(this).val().trim();
-            app.searchTimer = setTimeout(() => loadMovies(app.searchQuery), 450);
+            app.searchTimer = setTimeout(() => loadMovies(), 450);
         });
 
-        // Filtro "só assistidos"
+        // Filtro "só assistidos" — re-fetch: GET normal ou POST com IDs do usuário
         $('#filter-watched').on('change', function () {
             app.filterWatched = $(this).is(':checked');
-            renderMovies();
+            loadMovies();
         });
 
-        // Sort
+        // Sort — ordenação client-side, sem re-fetch
         $('#sort-movies').on('change', function () {
             app.sortBy = $(this).val();
             renderMovies();
