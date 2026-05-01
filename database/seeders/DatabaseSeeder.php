@@ -16,19 +16,20 @@ use Illuminate\Database\Seeder;
  *   2. UserSeeder         → popula 'users' (pai das ratings)
  *   3. MovieUserRatingSeeder → popula 'movie_user_ratings' (filho de ambos)
  *
- * ── Como executar ────────────────────────────────────────────────────────────
- * Fluxo completo do zero:
+ * ── Como executar (fluxo completo) ───────────────────────────────────────────
  *
  *   php artisan migrate:fresh           # recria todas as tabelas
  *   php artisan movies:import           # importa ~6000 filmes do CSV
- *   php artisan db:seed                 # executa este DatabaseSeeder
- *
- * Ou tudo de uma vez:
- *   php artisan migrate:fresh --seed    # recria + roda db:seed automaticamente
- *   php artisan movies:import           # ainda necessário separadamente
+ *   php artisan db:seed                 # executa este DatabaseSeeder (42 usuários)
  *
  * Para reimportar apenas os filmes (sem apagar usuários/ratings):
  *   php artisan movies:import --fresh   # limpa e reimporta apenas movies
+ *
+ * ── Fluxo de amostra (modo rápido para testes) ───────────────────────────────
+ *
+ *   php artisan migrate:fresh
+ *   php artisan movies:import --sample                    # 20 filmes variados
+ *   php artisan db:seed --class=SampleDatabaseSeeder      # 7 usuários
  *
  * ── Ambiente de desenvolvimento ──────────────────────────────────────────────
  * Este seeder cria dados fictícios para desenvolvimento e testes.

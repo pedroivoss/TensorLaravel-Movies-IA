@@ -92,7 +92,7 @@
                             Sistema de recomendação de filmes com inteligência artificial integrado com Laravel e Blade.
                             Descubra filmes baseado em IA!
                         </p>
-                        <a href="http://localhost:3003/blade-movie-ia" class="btn-project">
+                        <a href="http://localhost:3000/blade-movie-ia" class="btn-project">
                             Acessar Projeto →
                         </a>
                     </div>
@@ -109,7 +109,7 @@
                             Versão moderna em React do sistema de recomendação de filmes com IA.
                             Interface interativa e responsiva para melhor experiência do usuário.
                         </p>
-                        <a href="http://localhost:3003/react-movie-ia" class="btn-project">
+                        <a href="http://localhost:3000/react-movie-ia" class="btn-project">
                             Acessar Projeto →
                         </a>
                     </div>

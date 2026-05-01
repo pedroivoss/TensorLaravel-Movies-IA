@@ -23,8 +23,9 @@ use Illuminate\Support\Facades\DB;
  */
 class ImportMovies extends Command
 {
-    // Assinatura do comando com opção opcional --fresh
-    protected $signature = 'movies:import {--fresh : Limpa a tabela antes de importar}';
+    protected $signature = 'movies:import
+                            {--fresh  : Limpa a tabela antes de importar}
+                            {--sample : Importa apenas 20 filmes variados por gênero (modo rápido para testes)}';
 
     protected $description = 'Importa filmes do arquivo imdb.csv para a tabela movies';
 
@@ -49,6 +50,11 @@ class ImportMovies extends Command
             Movie::truncate();
             DB::statement('SET FOREIGN_KEY_CHECKS=1;');
             $this->info('Tabela limpa.');
+        }
+
+        // Modo sample: lê tudo em memória, seleciona 20 filmes variados e insere de uma vez
+        if ($this->option('sample')) {
+            return $this->handleSample($csvPath);
         }
 
         // Abre o CSV e pula o cabeçalho
@@ -129,6 +135,98 @@ class ImportMovies extends Command
         );
 
         return self::SUCCESS;
+    }
+
+    /**
+     * Modo sample: lê todo o CSV, seleciona 20 filmes variados por gênero e insere.
+     */
+    private function handleSample(string $csvPath): int
+    {
+        $this->info('Modo --sample: lendo CSV e selecionando 20 filmes variados...');
+
+        $handle  = fopen($csvPath, 'r');
+        $headers = fgetcsv($handle);
+
+        $allRows = [];
+        while (($row = fgetcsv($handle)) !== false) {
+            if (count($row) < 6) {
+                continue;
+            }
+            $data  = array_combine($headers, $row);
+            $movie = $this->parseRow($data);
+            if (empty($movie['name'])) {
+                continue;
+            }
+            $allRows[] = $movie;
+        }
+        fclose($handle);
+
+        $this->line(count($allRows) . ' filmes válidos encontrados no CSV.');
+
+        $sample = $this->selectVariedSample($allRows, 20);
+        $batch  = array_map(fn ($m) => array_merge($m, [
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]), $sample);
+
+        DB::table('movies')->insertOrIgnore($batch);
+        $imported = count($batch);
+
+        $this->newLine();
+        $this->info("✓ Importação de amostra concluída!");
+        $this->table(
+            ['Métrica', 'Valor'],
+            [
+                ['Filmes importados (sample)', $imported],
+                ['Total no banco',             Movie::count()],
+            ]
+        );
+
+        return self::SUCCESS;
+    }
+
+    /**
+     * Seleciona $count filmes de forma variada, garantindo diversidade de gêneros.
+     *
+     * Agrupa todos os filmes por gênero principal, embaralha cada grupo e faz
+     * um round-robin (um filme de cada gênero por vez) até atingir $count.
+     * Isso simula situações reais com dados representativos mas reduzidos.
+     */
+    private function selectVariedSample(array $rows, int $count): array
+    {
+        $buckets = [];
+        foreach ($rows as $row) {
+            $firstGenre = $row['genre']
+                ? trim(explode(',', $row['genre'])[0])
+                : '_none';
+            $buckets[$firstGenre][] = $row;
+        }
+
+        // Embaralha cada balde de gênero de forma independente
+        array_walk($buckets, fn (&$b) => shuffle($b));
+
+        $selected = [];
+        $genres   = array_keys($buckets);
+        $pointers = array_fill_keys($genres, 0);
+
+        // Round-robin: um filme de cada gênero até atingir $count
+        while (count($selected) < $count) {
+            $added = false;
+            foreach ($genres as $genre) {
+                if (count($selected) >= $count) {
+                    break;
+                }
+                if (isset($buckets[$genre][$pointers[$genre]])) {
+                    $selected[] = $buckets[$genre][$pointers[$genre]++];
+                    $added      = true;
+                }
+            }
+            if (! $added) {
+                break; // todos os baldes esgotados
+            }
+        }
+
+        return $selected;
     }
 
     /**
