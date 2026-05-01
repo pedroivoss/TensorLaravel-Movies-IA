@@ -38,7 +38,7 @@
                     <div class="input-group mb-3">
                         <select id="select-genre" class="form-control" multiple="multiple">
                             <option disabled>Selecione seu gênero</option>
-                            @foreach($genre as $genre_name)
+                            @foreach($genres as $genre_name)
                                 <option value="{{ $genre_name }}">{{ $genre_name }}</option>
                             @endforeach
                         </select>

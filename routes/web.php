@@ -14,7 +14,8 @@ use Illuminate\Support\Facades\Route;
  * endpoint Laravel necessário.
  */
 Route::get('/', function () {
-    return view('app');
+    return view('welcome');
 });
 
-Route::get('/testeBlade', [\App\Http\Controllers\TesteIaController::class, 'index']);
+Route::get('/blade-movie-ia', [\App\Http\Controllers\PageBladeController::class, 'index']);
+Route::get('/react-movie-ia', [\App\Http\Controllers\PageReactController::class, 'index']);
