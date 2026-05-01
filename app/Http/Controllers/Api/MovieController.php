@@ -20,9 +20,6 @@ use Illuminate\Http\Request;
  */
 class MovieController extends Controller
 {
-    private const PER_PAGE     = 50;
-    private const MAX_PER_PAGE = 100;
-
     public function index(Request $request): JsonResponse
     {
         $search = $request->input('search', '');
@@ -51,7 +48,7 @@ class MovieController extends Controller
             ]);
         }
 
-        // Sem "ids" → browse / search paginado normal
+        // Sem "ids" → retorna todos os filmes conforme filtros
         $query = Movie::select('id', 'name', 'genre', 'rate', 'duration', 'release_year');
 
         if ($search !== '') {
@@ -60,14 +57,13 @@ class MovieController extends Controller
             $query->whereNotNull('rate')->orderByDesc('rate');
         }
 
-        $perPage   = min((int) $request->input('per_page', self::PER_PAGE), self::MAX_PER_PAGE);
-        $paginated = $query->paginate($perPage);
+        $movies = $query->get();
 
         return response()->json([
-            'data'         => $paginated->items(),
-            'current_page' => $paginated->currentPage(),
-            'last_page'    => $paginated->lastPage(),
-            'total'        => $paginated->total(),
+            'data'         => $movies->values(),
+            'current_page' => 1,
+            'last_page'    => 1,
+            'total'        => $movies->count(),
         ]);
     }
 }
