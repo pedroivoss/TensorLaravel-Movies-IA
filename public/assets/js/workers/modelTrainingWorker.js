@@ -21,6 +21,8 @@ const makeContext = (movies, users) => {
     const ratingMin = Math.min(...ratingsMovie);
     const ratingMax = Math.max(...ratingsMovie);
 
+    debugger;
+
 }
 
 window.trainModel = async function trainModel() {
