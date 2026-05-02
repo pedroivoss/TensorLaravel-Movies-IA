@@ -204,11 +204,12 @@ window.trainModel = async function trainModel() {
     // 3. DEFINIÇÃO DO MODELO
     const model = tf.sequential();
     model.add(tf.layers.dense({
-        units: 32,
+        units: 128,
         activation: 'relu',
         inputShape: [context.dimentions]
     }));
-    model.add(tf.layers.dense({ units: 16, activation: 'relu' }));
+    model.add(tf.layers.dense({ units: 64, activation: 'relu' }));
+    model.add(tf.layers.dense({ units: 32, activation: 'relu' }));
     model.add(tf.layers.dense({ units: 1, activation: 'sigmoid' }));
 
     model.compile({
