@@ -87,6 +87,20 @@ function makeContext(movies, users) {
         })
     )
 
+    //aqui vamos criar o vinculo de usuarios e filmes, ou seja, para cada usuário,
+    // quais filmes ele assistiu e qual nota deu
+    const userWatchedMovies = Object.fromEntries(
+        users.map(user => {
+            const watched = (user.watchedMovies || []).map(wm => {
+                return {
+                    movieId: wm.id,
+                    rating: wm.rate,
+                }
+            });
+            return [user.id, watched];
+        })
+    )
+
     return {
         users,
         movies,
@@ -97,12 +111,17 @@ function makeContext(movies, users) {
         numGenres: uniqueGenres.length,
         genreIndex,
         movieAvgAgeNorm,
+        userWatchedMovies,
         // idade + qualidade + one-hot de gêneros (cada gênero é uma dimensão)
         // é 2 porque idade e qualidade são normalizados entre 0 e 1, então cada um ocupa uma dimensão.
         // entao 2 + o numero de generos unicos * 2 (um para o usuário, outro para o filme)
         dimentions: 2 + (uniqueGenres.length * 2),
     }
 
+}
+
+function encodeMovie(movie, context) {
+    console.log('Encoding movie:', movie.name);
 }
 
 
@@ -116,30 +135,11 @@ window.trainModel = async function trainModel() {
 
     const context = makeContext(movies, users);
 
-    debugger
+    debugger;
 
-    /*
-        resetTrainingVisor();
+    //agora temos nosso contexto global com todas as informações necessárias para treinar o modelo
+    _globalCtx = context;
 
-        const movies = window.app?.movies ?? app.movies;
-        const users = window.app?.users ?? app.users;
-
-        const context = makeContext(movies, users);
-
-        context.movieVectors = movies.map(movie => {
-            return {
-                name: movie.name,
-                meta: { ...movie },
-                vector: encodeMovie(movie, context).dataSync() // converte o tensor para array normal
-            }
-        })
-
-        _globalCtx = context;
-
-        const trainData = createTrainingData(context);
-
-        _model = await configureNeuralNetAndTrain(trainData);
-    */
     // treino fake só pra testar gráfico
     for (let epoch = 1; epoch <= 50; epoch++) {
         /*
@@ -157,77 +157,3 @@ window.trainModel = async function trainModel() {
     }
 };
 
-
-/*
-
-//Normaliza um valor entre 0 e 1, para evitar que a rede precise lidar com escalas diferentes
-//exemplo de idade entre 18 e 65, ou preço entre 10 e 1000
-//entao a idade 18 vira 0, a idade 65 vira 1, e a idade 40 vira algo em torno de 0.4
-
-const normalize = (value, min, max) => (value - min) / (max - min) || 1
-
-function makeContext(products, users) {
-    const ages = users.map(u => u.age)
-    const prices = products.map(p => p.price)
-
-    const minAge = Math.min(...ages)
-    const maxAge = Math.max(...ages)
-
-    const minPrice = Math.min(...prices)
-    const maxPrice = Math.max(...prices)
-
-    const colors = [...new Set(products.map(p => p.color))]
-
-    const categories = [...new Set(products.map(p => p.category))]
-
-    const colorsIndex = Object.fromEntries(
-        colors.map((color, index) => {
-            return [color, index]
-        })
-    )
-
-    const categoriesIndex = Object.fromEntries(
-        categories.map((category, index) => {
-            return [category, index]
-        })
-    )
-
-    //computar a media de idade dos comprados por produtos
-    // (ajuda a personalizar
-    const midAge = (minAge + maxAge) / 2
-    const ageSums = {}
-    const ageCounts = {}
-
-    users.forEach(user => {
-        user.purchases.forEach(p => {
-            ageSums[p.name] = (ageSums[p.name] || 0) + user.age
-            ageCounts[p.name] = (ageCounts[p.name] || 0) + 1
-        })
-    })
-
-    const productAvgAgeNorm = Object.fromEntries(
-        products.map(product => {
-            const avg = ageCounts[product.name] ? ageSums[product.name] / ageCounts[product.name] : midAge
-
-            return [product.name, normalize(avg, minAge, maxAge)]
-        })
-    )
-
-    return {
-        products,
-        users,
-        colorsIndex,
-        categoriesIndex,
-        minAge,
-        maxAge,
-        minPrice,
-        maxPrice,
-        numCategories: categories.length,
-        numColors: colors.length,
-        productAvgAgeNorm,
-        // price + age + colors + categories
-        //é 2 porque idade e preço são normalizados entre 0 e 1, então cada um ocupa uma dimensão. Já as categorias e cores são representadas como one-hot, ou seja, cada categoria e cor tem sua própria dimensão, onde o valor é 1 se o produto pertence a essa categoria ou cor, e 0 caso contrário.
-        dimentions: 2 + categories.length + colors.length, // idade e preço + one-hot de categoria e cor
-    }
-}
-*/
