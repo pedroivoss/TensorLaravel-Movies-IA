@@ -120,10 +120,43 @@ function makeContext(movies, users) {
 
 }
 
-function encodeMovie(movie, context) {
-    console.log('Encoding movie:', movie.name);
+// Função para criar o vetor de gêneros (Multi-Hot Encoding)
+function getGenreVector(itemGenres, context) {
+    const vector = new Array(context.numGenres).fill(0);
+    const genres = Array.isArray(itemGenres)
+        ? itemGenres
+        : (itemGenres ? itemGenres.split(',').map(g => g.trim()) : []);
+
+    genres.forEach(g => {
+        if (context.genreIndex[g] !== undefined) {
+            vector[context.genreIndex[g]] = 1;
+        }
+    });
+    return vector;
 }
 
+// Função que monta a "linha" completa de entrada para o modelo
+function createInputVector(user, movie, context) {
+    const ageNorm = normalize(user.age, context.minAge, context.maxAge);
+    //const movieRateNorm = normalize(movie.rate, context.minRating, context.maxRating);
+
+
+    // divide por 10 pois depois que o usuario da nota de 1 a 5
+    // o sistema classifica de 1 a 10, entao pra normalizar entre 0 e 1,
+    // dividimos por 10
+    const movieRateNorm = movie.rate / 10; // já que as notas são de 1 a 10, podemos simplesmente dividir por 10 para normalizar
+
+    const userGenreVec = getGenreVector(user.favorite_genres, context);
+    const movieGenreVec = getGenreVector(movie.genre, context);
+
+    // Estrutura: [Idade, Nota_Média_Filme, ...Gêneros_User, ...Gêneros_Filme]
+    return [
+        ageNorm,
+        movieRateNorm,
+        ...userGenreVec,
+        ...movieGenreVec
+    ];
+}
 
 window.trainModel = async function trainModel() {
     console.log('Training model with users');
@@ -135,25 +168,70 @@ window.trainModel = async function trainModel() {
 
     const context = makeContext(movies, users);
 
-    debugger;
-
     //agora temos nosso contexto global com todas as informações necessárias para treinar o modelo
     _globalCtx = context;
 
-    // treino fake só pra testar gráfico
-    for (let epoch = 1; epoch <= 50; epoch++) {
-        /*
-            const loss = 1 / epoch;
-            const accuracy = epoch / 50;
+    const inputs = [];
+    const outputs = [];
 
-            updateTrainingVisor({
-                epoch,
-                loss,
-                accuracy
+    // Percorremos cada usuário que tem histórico
+    context.users.forEach(user => {
+        if (user.watchedMovies && user.watchedMovies.length > 0) {
+            user.watchedMovies.forEach(movie => {
+                // X: Características do par Usuário/Filme
+                inputs.push(createInputVector(user, movie, context));
+
+                // Y: A nota que o usuário DEU (está no pivot)
+                // Normalizamos de 1-5 para 0-1
+                // usuario da de 1 a 5 porque ele da em forma de estrelas,
+                //  mas o modelo vai prever um valor entre 0 e 1,
+                // então normalizamos dividindo por 5
+                const ratingReal = movie.pivot.rating / 5;
+                outputs.push([ratingReal]);
             });
-        */
+        }
+    });
 
-        await new Promise(resolve => setTimeout(resolve, 100));
+    if (inputs.length === 0) {
+        console.error("Nenhum dado de avaliação encontrado para treino!");
+        return;
     }
+
+    // Convertendo para Tensores
+    const xs = tf.tensor2d(inputs);
+    const ys = tf.tensor2d(outputs);
+
+    // 3. DEFINIÇÃO DO MODELO
+    const model = tf.sequential();
+    model.add(tf.layers.dense({
+        units: 32,
+        activation: 'relu',
+        inputShape: [context.dimentions]
+    }));
+    model.add(tf.layers.dense({ units: 16, activation: 'relu' }));
+    model.add(tf.layers.dense({ units: 1, activation: 'sigmoid' }));
+
+    model.compile({
+        optimizer: tf.train.adam(0.01),
+        loss: 'meanSquaredError'
+    });
+
+    // 4. TREINAMENTO REAL
+    console.log("Iniciando treinamento real...");
+    await model.fit(xs, ys, {
+        epochs: 50,
+        callbacks: {
+            onEpochEnd: (epoch, logs) => {
+                updateTrainingVisor({
+                    epoch: epoch + 1,
+                    loss: logs.loss,
+                    accuracy: 1 - logs.loss // Simplificação para o visor
+                });
+            }
+        }
+    });
+
+    _model = model;
+    console.log("Modelo treinado com sucesso!");
 };
 
