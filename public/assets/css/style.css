@@ -315,3 +315,7 @@ body {
 .ai-divider { border: none; border-top: 1px solid #f0f0f0; margin: 28px 0 8px; }
 .ai-footer  { text-align: center; font-size: 12px; color: var(--text-second); padding-bottom: 20px; }
 code        { background: rgba(0,0,0,.06); padding: 1px 5px; border-radius: 3px; font-size: 11px; }
+
+#tfjs-visor-container {
+    z-index: 1040 !important;
+}

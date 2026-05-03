@@ -429,3 +429,51 @@ function updateMoviesPanel() {
     $('#filter-watched').prop('disabled', !hasUser);
     renderMovies();
 }
+
+async function loadModelFromDatabase() {
+    try {
+        const res = await fetch('/api/ai-models/load').then(r => r.json());
+
+        if (!res || !res.weights_base64 || !res.model_topology) {
+            console.log("ℹ️ Nenhum modelo no banco.");
+            return;
+        }
+
+        // 1. Converte o Base64 que veio do banco para ArrayBuffer
+        const weightData = Uint8Array.from(atob(res.weights_base64), c => c.charCodeAt(0)).buffer;
+
+        // 2. Garante que a topologia seja um objeto
+        const modelTopology = typeof res.model_topology === 'string'
+            ? JSON.parse(res.model_topology)
+            : res.model_topology;
+
+        // 3. A MONTAGEM CORRETA PARA O TF.JS (Onde você estava errando):
+        // O fromMemory espera um objeto que contenha modelTopology e weightSpecs/weightData
+        // formatados exatamente como um "WeightsManifest".
+
+        const weightSpecs = modelTopology.weightsManifest[0].weights;
+
+        const modelJSON = {
+            modelTopology: modelTopology,
+            weightSpecs: weightSpecs,
+            weightData: weightData
+        };
+
+        // 4. Carrega. Se der erro aqui, é a versão do TFJS ou o Shape (56).
+        const loadedModel = await tf.loadLayersModel(tf.io.fromMemory({
+            modelTopology: modelJSON.modelTopology,
+            weightSpecs: modelJSON.weightSpecs,
+            weightData: modelJSON.weightData
+        }));
+
+        _model = loadedModel;
+        window._model = loadedModel;
+
+        _globalCtx = makeContext(app.movies, app.users);
+        window._globalCtx = _globalCtx;
+
+        console.log("🚀 IA carregada do banco e pronta para recomendar!");
+    } catch (err) {
+        console.error(" ❌ Falha ao carregar modelo:", err);
+    }
+}

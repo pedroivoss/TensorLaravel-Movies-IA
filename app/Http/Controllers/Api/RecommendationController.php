@@ -3,9 +3,11 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\AiModel;
 use App\Models\Movie;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 
 /**
  * RecommendationController — API
@@ -100,5 +102,33 @@ class RecommendationController extends Controller
                 ? 'Top filmes do IMDB (Cold Start — sem gêneros favoritos)'
                 : 'Filmes baseados nos seus gêneros favoritos',
         ]);
+    }
+
+    public function storeModel(Request $request) {
+        // Verifique se os dados estão chegando
+        if (!$request->has('weights')) {
+            return response()->json(['error' => 'Sem pesos'], 400);
+        }
+
+        $topology = $request->input('topology');
+        // Se vier como string do JS, garanta que seja salva como JSON
+        if (is_string($topology)) {
+            $topology = json_decode($topology, true);
+        }
+
+        AiModel::updateOrCreate(
+            ['name' => 'movie_recommender'],
+            [
+                'model_topology' => $topology,
+                'weights_base64' => $request->input('weights')
+            ]
+        );
+        return response()->json(['status' => 'saved']);
+    }
+
+    public function loadModel(): JsonResponse
+    {
+        $model = AiModel::where('name', 'movie_recommender')->first();
+        return response()->json($model);
     }
 }

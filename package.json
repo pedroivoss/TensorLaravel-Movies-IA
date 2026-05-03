@@ -5,7 +5,20 @@
     "scripts": {
         "dev": "vite",
         "build": "vite build",
-        "start": "concurrently \"php artisan serve --port=3000\" \"browser-sync start --proxy localhost:3000 --files 'resources/views/**/*.php, public/assets/js/**/*.js'\""
+        "start": "concurrently \"php artisan serve --port=3000\" \"browser-sync start --proxy localhost:3000 --files 'resources/views/**/*.php, public/assets/js/**/*.js'\"",
+        "db-full": [
+            "@php artisan migrate:fresh",
+            "@php artisan movies:import",
+            "@php artisan db:seed"
+        ],
+        "db-sample": [
+            "@php artisan migrate:fresh",
+            "@php artisan movies:import --sample",
+            "@php artisan db:seed --class=SampleDatabaseSeeder"
+        ],
+        "db-refresh-movies": [
+            "@php artisan movies:import --fresh"
+        ]
     },
     "devDependencies": {
         "@vitejs/plugin-react": "^4.3.0",

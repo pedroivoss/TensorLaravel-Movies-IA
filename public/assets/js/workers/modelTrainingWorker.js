@@ -120,6 +120,11 @@ function makeContext(movies, users) {
 
 }
 
+window.makeContext = makeContext;
+window.createInputVector = createInputVector;
+window._globalCtx = _globalCtx;
+window._model = _model;
+
 // Função para criar o vetor de gêneros (Multi-Hot Encoding)
 function getGenreVector(itemGenres, context) {
     const vector = new Array(context.numGenres).fill(0);
@@ -175,7 +180,7 @@ window.trainModel = async function trainModel() {
     const outputs = [];
 
     // Percorremos cada usuário que tem histórico
-    context.users.forEach(user => {
+    /*context.users.forEach(user => {
         if (user.watchedMovies && user.watchedMovies.length > 0) {
             user.watchedMovies.forEach(movie => {
                 // X: Características do par Usuário/Filme
@@ -190,6 +195,22 @@ window.trainModel = async function trainModel() {
                 outputs.push([ratingReal]);
             });
         }
+    });
+    */
+
+    context.users.forEach(user => {
+        // Verifique se a propriedade é watchedMovies (como no seu JS)
+        // ou se o Laravel enviou como ratings
+        const movies = user.watchedMovies || user.ratings || [];
+
+        movies.forEach(movie => {
+            inputs.push(createInputVector(user, movie, context));
+
+            // Correção aqui: Garantir que pegamos a nota independente da estrutura
+            const score = movie.pivot ? movie.pivot.rating : movie.rating;
+            const ratingReal = (score || 3) / 5;
+            outputs.push([ratingReal]);
+        });
     });
 
     if (inputs.length === 0) {
@@ -220,7 +241,9 @@ window.trainModel = async function trainModel() {
     // 4. TREINAMENTO REAL
     console.log("Iniciando treinamento real...");
     await model.fit(xs, ys, {
-        epochs: 50,
+        epochs: 50, // número de épocas para treinar o modelo, ou seja, quantas vezes o modelo vai passar por todo o conjunto de dados de treinamento. Um número maior de épocas pode levar a um modelo mais preciso, mas também pode aumentar o risco de overfitting, onde o modelo aprende muito bem os dados de treinamento, mas tem um desempenho ruim em dados novos.
+        batchSize: 32, // tamanho do lote para o treinamento, ou seja, quantas amostras de treinamento o modelo vai processar antes de atualizar os pesos. Um tamanho de lote de 32 é uma escolha comum que pode ajudar a acelerar o treinamento e melhorar a estabilidade do modelo, mas pode ser ajustado conforme necessário com base no tamanho do conjunto de dados e na capacidade computacional disponível.
+        shuffle: true, // embaralha os dados de treinamento a cada época, o que pode ajudar a melhorar a generalização do modelo e reduzir o risco de overfitting, garantindo que o modelo não veja os dados na mesma ordem repetidamente durante o treinamento.
         callbacks: {
             onEpochEnd: (epoch, logs) => {
                 updateTrainingVisor({
@@ -237,45 +260,91 @@ window.trainModel = async function trainModel() {
     //isso garante que o modelo treinado fique disponível globalmente para a função de recomendação
     window._model = model;
     console.log("Modelo treinado com sucesso!");
+
+    // Chamada automática para persistir no MySQL
+    await saveModelToDatabase();
+
 };
+
+async function saveModelToDatabase() {
+
+    if (!_model) return;
+
+    // O artifacts contém modelTopology e weightData separadamente
+    const artifacts = await _model.save(tf.io.withSaveHandler(async (art) => art));
+
+    // Criamos o manifesto de pesos que estava faltando na sua topologia
+    const weightsManifest = [{
+        paths: ["./weights.bin"],
+        weights: artifacts.weightSpecs
+    }];
+
+    // Mesclamos a topologia com o manifesto
+    const fullTopology = {
+        ...artifacts.modelTopology,
+        weightsManifest: weightsManifest
+    };
+
+    const modelData = {
+        // Converte a topologia (JSON) para string
+
+        topology: JSON.stringify(fullTopology),
+        // Converte os pesos binários para uma String Base64 para caber no MySQL
+        weights: btoa(String.fromCharCode(...new Uint8Array(artifacts.weightData)))
+    };
+
+    await fetch('/api/ai-models/save', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': CSRF_TOKEN },
+        body: JSON.stringify(modelData)
+    });
+    Swal.fire('Sucesso', 'Modelo persistido com manifesto de pesos no MySQL!', 'success');
+
+    console.log("Modelo salvo no banco de dados com sucesso!");
+}
 
 // Adicione esta função ao final do arquivo modelTrainingWorker.js
 window.getRecommendations = async function (userId) {
     if (!_model || !_globalCtx) {
-        console.warn("Modelo não treinado ou contexto ausente.");
+        console.warn("IA: Modelo ou Contexto de dados faltando.");
         return [];
     }
 
     const user = _globalCtx.users.find(u => u.id == userId);
-    if (!user) return [];
+    if (!user) {
+        console.error("IA: Usuário não encontrado no contexto:", userId);
+        return [];
+    }
 
     const recommendations = [];
-    const watchedIds = user.watchedMovies.map(m => m.id);
+    const watchedIds = user.watchedMovies ? user.watchedMovies.map(m => m.id) : [];
 
-    // Gerar predição para cada filme do catálogo
+    console.log(`IA: Gerando para ${user.name}. Já assistiu: ${watchedIds.length} filmes.`);
+
     for (const movie of _globalCtx.movies) {
-        // Pular filmes que o usuário já assistiu
         if (watchedIds.includes(movie.id)) continue;
 
-        const inputVector = createInputVector(user, movie, _globalCtx);
-        const inputTensor = tf.tensor2d([inputVector]);
-
-        const prediction = _model.predict(inputTensor);
-        const score = (await prediction.data())[0]; // Valor entre 0 e 1
+        // Use tf.tidy para limpar tensores intermediários automaticamente
+        const score = tf.tidy(() => {
+            const inputVector = createInputVector(user, movie, _globalCtx);
+            const inputTensor = tf.tensor2d([inputVector]);
+            return _model.predict(inputTensor).dataSync()[0];
+        });
 
         recommendations.push({
             ...movie,
-            predictedRating: (score * 5).toFixed(1), // Converte de volta para 1-5 estrelas
+            predictedRating: (score * 5).toFixed(1),
             score: score
         });
 
-        inputTensor.dispose(); // Liberar memória
-        prediction.dispose();
+        if (recommendations.length % 100 === 0) await tf.nextFrame();
     }
 
-    // Ordenar pelos de maior nota prevista e pegar os top 10
-    return recommendations
+    const final = recommendations
         .sort((a, b) => b.score - a.score)
         .slice(0, 10);
+
+    console.log("IA: Top 10 gerado com sucesso:", final);
+    return final;
 };
 

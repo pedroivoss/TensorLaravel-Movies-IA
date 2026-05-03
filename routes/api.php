@@ -32,5 +32,7 @@ Route::get('/users/{user}', [UserController::class, 'show']);
 Route::post('/movies', [MovieController::class, 'index']);
 
 Route::get('/recommendations/{user}', [RecommendationController::class, 'index']);
+Route::post('/ai-models/save', [RecommendationController::class, 'storeModel']);
+Route::get('/ai-models/load', [RecommendationController::class, 'loadModel']);
 
 Route::post('/ratings', [RatingController::class, 'store']);

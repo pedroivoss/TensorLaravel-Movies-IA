@@ -160,9 +160,22 @@
     Events
     ════════════════════════════════════════════════════════════════════════════ */
     $(document).ready(async function () {
-
+        // 1. Carrega os usuários e filmes iniciais da API
         await loadUsers();
         await loadMovies();
+
+        // 2. SOLUÇÃO DEFINITIVA: Inicializa o contexto global da IA
+        // Isso deve acontecer ANTES de qualquer tentativa de recomendação
+        if (typeof makeContext === 'function') {
+            _globalCtx = makeContext(app.movies, app.users);
+            window._globalCtx = _globalCtx;
+            console.log("✅ Contexto da IA (Data Context) sincronizado.");
+        } else {
+            console.error("❌ Função makeContext não encontrada. Verifique a ordem dos scripts.");
+        }
+
+        // 3. Tenta carregar o modelo salvo no MySQL
+        await loadModelFromDatabase();
 
         // Seleção de usuário
         $('#select-user').on('change', function () {
