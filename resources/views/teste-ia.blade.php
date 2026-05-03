@@ -205,8 +205,19 @@
             await saveRating(mid, rating);
         });
 
+        // No bloco de script do Blade, ajuste o evento do botão treinar:
         $(document).on('click', '#btn-treinar', async function () {
-            await trainModel();
+            const btn = $(this);
+            btn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm"></span> Treinando...');
+
+            await trainModel(); // Chama a função no worker[cite: 4]
+
+            btn.html('<i class="bi bi-check-lg"></i> Modelo Pronto');
+
+            // Se houver um usuário selecionado, atualiza as recomendações agora com a IA
+            if (app.selectedUser) {
+                selectUser(app.selectedUser.id);
+            }
         });
 
     });

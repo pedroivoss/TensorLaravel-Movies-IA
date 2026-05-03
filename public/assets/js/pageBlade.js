@@ -269,17 +269,14 @@ async function selectUser(userId) {
     // Carrega detalhes e recomendações em paralelo
     showRecoLoading(true);
 
-    const [detailRes, recoRes] = await Promise.allSettled([
-        fetch(`/api/users/${userId}`).then(r => r.json()),
-        fetch(`/api/recommendations/${userId}`).then(r => r.json()),
-    ]);
+    // 1. Buscamos os detalhes do usuário (obrigatório para saber o que ele já assistiu)
+    const detailRes = await fetch(`/api/users/${userId}`).then(r => r.json());
 
-    if (detailRes.status === 'fulfilled') {
-        app.userDetail = detailRes.value;
+    if (detailRes) {
+        app.userDetail = detailRes;
         renderUserProfile();
         updateMoviesPanel();
-        // Se "só assistidos" estiver ativo, refaz a busca no servidor com os IDs do usuário.
-        // Caso contrário, apenas re-renderiza para atualizar os badges "Assistido".
+
         if (app.filterWatched) {
             await loadMovies();
         } else {
@@ -287,26 +284,51 @@ async function selectUser(userId) {
         }
     }
 
-    if (recoRes.status === 'fulfilled') {
-        app.reco = recoRes.value.recommendations ?? [];
-        showRecoLoading(false);
+    // 2. Lógica de Recomendações: IA Local vs API Laravel
+    // Verificamos se o modelo foi treinado no worker e está disponível
+    const isIaReady = (typeof getRecommendations === 'function' || typeof window.getRecommendations === 'function') && (window._model || _model);
 
-        // Atualiza título
+    if (isIaReady) {
+        console.log("Gerando recomendações via Inteligência Artificial local...");
+
+        const fn = window.getRecommendations || getRecommendations;
+        const recommendations = await fn(userId);
+
+        // Chamamos a função de predição do Worker[cite: 4]
+        //const recommendations = await window.getRecommendations(userId);
+        app.reco = recommendations;
+
         const firstName = app.selectedUser?.name?.split(' ')[0] ?? '';
-        $('#reco-title').text(`Recomendações para ${firstName}`);
-        $('#reco-algo-tag').removeClass('d-none');
+        $('#reco-title').text(`Sugestões de IA para ${firstName}`);
 
-        // Alerta do algoritmo
-        const data = recoRes.value;
-        const msg = data.is_cold_start
-            ? 'Cold Start: sem gêneros favoritos — mostrando os filmes mais bem avaliados do IMDB.'
-            : `Filtro por gêneros: ${(data.favorite_genres ?? []).slice(0, 3).join(', ')}${(data.favorite_genres?.length ?? 0) > 3 ? '...' : ''}. O TF.js substituirá isto com um modelo treinado no browser.`;
-        $('#reco-algo-text').text(msg);
-        $('#reco-algo-alert').removeClass('d-none');
+        // Ajustamos o alerta para indicar sucesso da IA[cite: 5, 7]
+        $('#reco-algo-tag').removeClass('d-none').html('<i class="bi bi-robot"></i> Inteligência Artificial');
+        $('#reco-algo-text').text("Baseado no modelo treinado localmente com seu histórico e preferências.");
+        $('#reco-algo-alert').removeClass('d-none').removeClass('ai-alert--warning').addClass('ai-alert--success');
 
+        showRecoLoading(false);
         renderReco();
     } else {
+        // Fallback: Se a IA não foi treinada, usa a lógica simples do servidor[cite: 12]
+        console.log("IA não treinada. Usando recomendações baseadas em gêneros (API)...");
+        const recoRes = await fetch(`/api/recommendations/${userId}`).then(r => r.json());
+
+        app.reco = recoRes.recommendations ?? [];
         showRecoLoading(false);
+
+        const firstName = app.selectedUser?.name?.split(' ')[0] ?? '';
+        $('#reco-title').text(`Recomendações para ${firstName}`);
+        $('#reco-algo-tag').removeClass('d-none').text('Filtro por Gêneros');
+
+        const data = recoRes;
+        const msg = data.is_cold_start
+            ? 'Cold Start: sem histórico ou gêneros — mostrando os mais bem avaliados.'
+            : `Filtro por gêneros: ${(data.favorite_genres ?? []).slice(0, 3).join(', ')}. Clique em "Treinar Modelo" para ativar a IA.`;
+
+        $('#reco-algo-text').text(msg);
+        $('#reco-algo-alert').removeClass('d-none').addClass('ai-alert--warning');
+
+        renderReco();
     }
 }
 

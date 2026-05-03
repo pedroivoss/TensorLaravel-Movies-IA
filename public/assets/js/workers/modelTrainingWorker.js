@@ -233,6 +233,49 @@ window.trainModel = async function trainModel() {
     });
 
     _model = model;
+
+    //isso garante que o modelo treinado fique disponível globalmente para a função de recomendação
+    window._model = model;
     console.log("Modelo treinado com sucesso!");
+};
+
+// Adicione esta função ao final do arquivo modelTrainingWorker.js
+window.getRecommendations = async function (userId) {
+    if (!_model || !_globalCtx) {
+        console.warn("Modelo não treinado ou contexto ausente.");
+        return [];
+    }
+
+    const user = _globalCtx.users.find(u => u.id == userId);
+    if (!user) return [];
+
+    const recommendations = [];
+    const watchedIds = user.watchedMovies.map(m => m.id);
+
+    // Gerar predição para cada filme do catálogo
+    for (const movie of _globalCtx.movies) {
+        // Pular filmes que o usuário já assistiu
+        if (watchedIds.includes(movie.id)) continue;
+
+        const inputVector = createInputVector(user, movie, _globalCtx);
+        const inputTensor = tf.tensor2d([inputVector]);
+
+        const prediction = _model.predict(inputTensor);
+        const score = (await prediction.data())[0]; // Valor entre 0 e 1
+
+        recommendations.push({
+            ...movie,
+            predictedRating: (score * 5).toFixed(1), // Converte de volta para 1-5 estrelas
+            score: score
+        });
+
+        inputTensor.dispose(); // Liberar memória
+        prediction.dispose();
+    }
+
+    // Ordenar pelos de maior nota prevista e pegar os top 10
+    return recommendations
+        .sort((a, b) => b.score - a.score)
+        .slice(0, 10);
 };
 
