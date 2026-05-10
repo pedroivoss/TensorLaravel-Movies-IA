@@ -11,6 +11,86 @@
     <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet">
     <link href="{{ asset('assets/css/style.css') }}?v={{ filemtime(public_path('assets/css/style.css')) }}" rel="stylesheet">
 
+    <style>
+        /* ── Terminal card ──────────────────────────────── */
+        .console-card {
+            background: #1e1e2e;
+            border-radius: var(--radius-card);
+            overflow: hidden;
+            box-shadow: var(--shadow-card);
+            height: 100%;
+        }
+        .console-titlebar {
+            background: #2a2a3e;
+            padding: 10px 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            border-bottom: 1px solid #3a3a5a;
+        }
+        .console-dots { display: flex; gap: 6px; margin-right: 4px; }
+        .console-dot  { width: 12px; height: 12px; border-radius: 50%; }
+        .console-dot--red    { background: #ff5f57; }
+        .console-dot--yellow { background: #ffbd2e; }
+        .console-dot--green  { background: #28c840; }
+        .console-titlebar-label {
+            color: #6e7681;
+            font-family: 'Consolas', 'Courier New', monospace;
+            font-size: 12px;
+        }
+        .console-tag-term {
+            margin-left: auto;
+            background: #161b22;
+            border: 1px solid #30363d;
+            border-radius: 4px;
+            padding: 1px 8px;
+            color: #58a6ff;
+            font-size: 11px;
+            white-space: nowrap;
+        }
+        .console-clear-btn {
+            background: transparent;
+            border: 1px solid #30363d;
+            border-radius: 4px;
+            color: #6e7681;
+            padding: 1px 10px;
+            font-size: 11px;
+            cursor: pointer;
+            font-family: 'Consolas', monospace;
+            transition: border-color .15s, color .15s;
+            flex-shrink: 0;
+        }
+        .console-clear-btn:hover { border-color: #484f58; color: #c9d1d9; }
+
+        /* ── Terminal output area ───────────────────────── */
+        .console-panel {
+            background: #0d1117;
+            padding: 12px 16px;
+            height: 200px;
+            overflow-y: auto;
+            font-family: 'Consolas', 'Courier New', monospace;
+            font-size: 12px;
+            line-height: 1.8;
+        }
+        .console-panel::-webkit-scrollbar       { width: 6px; }
+        .console-panel::-webkit-scrollbar-track { background: #161b22; }
+        .console-panel::-webkit-scrollbar-thumb { background: #30363d; border-radius: 3px; }
+        .console-panel::-webkit-scrollbar-thumb:hover { background: #484f58; }
+
+        .console-entry { display: flex; gap: 10px; min-width: 0; padding: 1px 0; }
+        .console-time  {
+            color: #484f58;
+            flex-shrink: 0;
+            user-select: none;
+            font-size: 11px;
+            padding-top: 2px;
+        }
+        .console-log         { color: #c9d1d9; }
+        .console-warn        { color: #e3b341; }
+        .console-error       { color: #f85149; }
+        .console-placeholder { color: #30363d; font-style: italic; }
+    </style>
+
 </head>
 <body>
 
@@ -29,20 +109,50 @@
 <!-- ── Content ─────────────────────────────────────────────────────────────── -->
 <div class="ai-content">
 
-    <!-- ── 1. User selector card ──────────────────────────────────────────── -->
-    <div class="ai-card mb-3">
-        <div class="ai-card__header">
-            <i class="bi bi-person fs-5 icon-blue"></i>
-            <h2 class="ai-card__title">Selecione um Usuário</h2>
-            <span id="users-count" class="ai-tag ai-tag--blue d-none"></span>
-        </div>
-        <p class="ai-card__desc mb-3">Escolha um usuário para carregar o perfil e ver as recomendações personalizadas.</p>
+    <!-- ── 1. User selector + Console do Modelo ────────────────────────────── -->
+    <div class="row g-3 mb-3">
 
-        <div id="user-select-loading" class="d-flex align-items-center gap-2 text-second" style="font-size:13px;">
-            <div class="spinner-border spinner-border-sm" role="status" style="color:var(--primary);"></div>
-            Carregando usuários...
+        <!-- Seletor de usuário (compacto) -->
+        <div class="col-12 col-lg-4">
+            <div class="ai-card h-100">
+                <div class="ai-card__header">
+                    <i class="bi bi-person fs-5 icon-blue"></i>
+                    <h2 class="ai-card__title">Selecione um Usuário</h2>
+                    <span id="users-count" class="ai-tag ai-tag--blue d-none"></span>
+                </div>
+                <div id="user-select-loading" class="d-flex align-items-center gap-2 text-second" style="font-size:13px;">
+                    <div class="spinner-border spinner-border-sm" role="status" style="color:var(--primary);"></div>
+                    Carregando usuários...
+                </div>
+                <select id="select-user" class="w-100 d-none"></select>
+            </div>
         </div>
-        <select id="select-user" class="w-100 d-none"></select>
+
+        <!-- Console do Modelo — terminal UI -->
+        <div class="col-12 col-lg-8">
+            <div class="console-card">
+
+                <div class="console-titlebar">
+                    <div class="console-dots">
+                        <div class="console-dot console-dot--red"></div>
+                        <div class="console-dot console-dot--yellow"></div>
+                        <div class="console-dot console-dot--green"></div>
+                    </div>
+                    <span class="console-titlebar-label">modelTrainingWorker.js</span>
+                    <span class="console-tag-term">IA Log</span>
+                    <button id="btn-clear-console" class="console-clear-btn ms-2">clear</button>
+                </div>
+
+                <div id="console-log-panel" class="console-panel">
+                    <div class="console-entry console-placeholder">
+                        <span class="console-time">—</span>
+                        <span>Aguardando atividade do modelo...</span>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
     </div>
 
     <!-- ── 2. User profile card (oculto até selecionar) ───────────────────── -->
@@ -131,8 +241,8 @@
 
     <hr class="ai-divider">
     <p class="ai-footer">
-        Próxima etapa: adaptar <code>treinamento.js</code> para treinar o modelo de recomendação
-        diretamente no browser com TensorFlow.js.
+        Modelo treinado com <code>TensorFlow.js</code> diretamente no browser — use o botão
+        <strong>Treinar Modelo</strong> para iniciar o treinamento e acompanhe as métricas no visor.
     </p>
 
 </div><!-- /ai-content -->
@@ -153,6 +263,62 @@
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script src="{{ asset('assets/js/pageBlade.js') }}?v={{ filemtime(public_path('assets/js/pageBlade.js')) }}"></script>
 <script src="{{ asset('assets/js/TFVisorView.js') }}?v={{ filemtime(public_path('assets/js/TFVisorView.js')) }}"></script>
+<script>
+    /* ── Console interceptor: captura saídas do ModelTrainingWorker ── */
+    (function () {
+        const _log   = console.log.bind(console);
+        const _warn  = console.warn.bind(console);
+        const _error = console.error.bind(console);
+        let _firstEntry = true;
+
+        function addEntry(level, args) {
+            const panel = document.getElementById('console-log-panel');
+            if (!panel) return;
+
+            if (_firstEntry) {
+                panel.innerHTML = '';
+                _firstEntry = false;
+            }
+
+            const time = new Date().toTimeString().slice(0, 8);
+
+            const entry   = document.createElement('div');
+            entry.className = `console-entry console-${level}`;
+
+            const timeSpan = document.createElement('span');
+            timeSpan.className = 'console-time';
+            timeSpan.textContent = time;
+
+            const msgSpan = document.createElement('span');
+            msgSpan.style.wordBreak = 'break-all';
+            msgSpan.textContent = args.map(a => {
+                if (a === null || a === undefined) return String(a);
+                if (typeof a === 'object') { try { return JSON.stringify(a); } catch { return String(a); } }
+                return String(a);
+            }).join(' ');
+
+            entry.appendChild(timeSpan);
+            entry.appendChild(msgSpan);
+
+            const entries = panel.querySelectorAll('.console-entry');
+            if (entries.length >= 200) entries[0].remove();
+
+            panel.appendChild(entry);
+            panel.scrollTop = panel.scrollHeight;
+        }
+
+        console.log   = function (...a) { _log(...a);   addEntry('log',   a); };
+        console.warn  = function (...a) { _warn(...a);  addEntry('warn',  a); };
+        console.error = function (...a) { _error(...a); addEntry('error', a); };
+
+        document.addEventListener('DOMContentLoaded', function () {
+            document.getElementById('btn-clear-console')?.addEventListener('click', function () {
+                const panel = document.getElementById('console-log-panel');
+                panel.innerHTML = '<div class="console-entry console-placeholder"><span class="console-time">—</span><span>Console limpo.</span></div>';
+            });
+        });
+    })();
+</script>
 <script src="{{ asset('assets/js/workers/modelTrainingWorker.js') }}?v={{ filemtime(public_path('assets/js/workers/modelTrainingWorker.js')) }}"></script>
 
 <script>
