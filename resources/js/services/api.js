@@ -35,12 +35,12 @@ export const getUser = (userId) =>
 // ── Filmes ───────────────────────────────────────────────────────────────────
 
 /**
- * Busca filmes por título.
- * @param {string} search  - termo de busca (opcional; se vazio retorna top filmes)
- * @param {number} page    - página da busca (padrão: 1)
+ * Busca filmes por título. A rota aceita POST com body { search, ids? }.
+ * @param {string}   search - termo de busca (opcional)
+ * @param {number[]} ids    - lista de IDs para filtrar (opcional; filtra "só assistidos")
  */
-export const getMovies = (search = '', page = 1) =>
-    http.get('/movies', { params: { search, page } }).then(r => r.data);
+export const getMovies = (search = '', ids = []) =>
+    http.post('/movies', { search, ...(ids.length ? { ids } : {}) }).then(r => r.data);
 
 // ── Recomendações ────────────────────────────────────────────────────────────
 
