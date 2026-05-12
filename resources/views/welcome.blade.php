@@ -15,7 +15,7 @@
             padding: 20px;
         }
         .container-projects {
-            max-width: 900px;
+            max-width: 520px;
             width: 100%;
         }
         .card {
@@ -23,17 +23,16 @@
             border-radius: 12px;
             box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
             transition: transform 0.3s ease, box-shadow 0.3s ease;
-            height: 100%;
         }
         .card:hover {
             transform: translateY(-10px);
             box-shadow: 0 15px 40px rgba(0, 0, 0, 0.4);
         }
         .card-body {
-            padding: 30px;
+            padding: 36px;
         }
         .card-title {
-            font-size: 1.5rem;
+            font-size: 1.6rem;
             font-weight: bold;
             color: #333;
             margin-bottom: 15px;
@@ -42,26 +41,17 @@
             color: #666;
             font-size: 1rem;
             line-height: 1.6;
-            margin-bottom: 20px;
-        }
-        .badge-status {
-            display: inline-block;
-            background-color: #ffc107;
-            color: #333;
-            padding: 5px 12px;
-            border-radius: 20px;
-            font-size: 0.85rem;
-            font-weight: bold;
-            margin-bottom: 15px;
+            margin-bottom: 24px;
         }
         .btn-project {
             background-color: #667eea;
             border: none;
             color: white;
-            padding: 10px 25px;
+            padding: 12px 30px;
             border-radius: 8px;
             text-decoration: none;
             font-weight: bold;
+            font-size: 1rem;
             transition: background-color 0.3s ease;
             display: inline-block;
         }
@@ -73,7 +63,7 @@
         h1 {
             text-align: center;
             color: white;
-            margin-bottom: 50px;
+            margin-bottom: 40px;
             font-weight: bold;
         }
     </style>
@@ -82,38 +72,17 @@
     <div class="container-projects">
         <h1>🎬 TensorLaravel Movies IA</h1>
 
-        <div class="row g-4">
-            <!-- Card Blade Movie IA -->
-            <div class="col-md-6">
-                <div class="card">
-                    <div class="card-body">
-                        <h5 class="card-title">🔥 Blade Movie IA</h5>
-                        <p class="card-text">
-                            Sistema de recomendação de filmes com inteligência artificial integrado com Laravel e Blade.
-                            Descubra filmes baseado em IA!
-                        </p>
-                        <a href="http://localhost:3000/blade-movie-ia" class="btn-project">
-                            Acessar Projeto →
-                        </a>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Card React Movie IA -->
-            <div class="col-md-6">
-                <div class="card">
-                    <div class="card-body">
-                        <span class="badge-status">⚙️ Em Andamento!</span>
-                        <h5 class="card-title">⚛️ React Movie IA</h5>
-                        <p class="card-text">
-                            Versão moderna em React do sistema de recomendação de filmes com IA.
-                            Interface interativa e responsiva para melhor experiência do usuário.
-                        </p>
-                        <a href="http://localhost:3000/react-movie-ia" class="btn-project">
-                            Acessar Projeto →
-                        </a>
-                    </div>
-                </div>
+        <div class="card">
+            <div class="card-body text-center">
+                <h5 class="card-title">🔥 Movie Recommendation AI</h5>
+                <p class="card-text">
+                    Sistema de recomendação de filmes com inteligência artificial treinada
+                    diretamente no browser via TensorFlow.js.
+                    Avalie filmes, treine o modelo e receba sugestões personalizadas.
+                </p>
+                <a href="{{ route('laravel-movie-ia') }}" class="btn-project">
+                    Acessar Projeto →
+                </a>
             </div>
         </div>
     </div>

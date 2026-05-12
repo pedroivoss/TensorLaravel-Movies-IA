@@ -17,5 +17,5 @@ Route::get('/', function () {
     return view('welcome');
 });
 
-Route::get('/blade-movie-ia', [\App\Http\Controllers\PageBladeController::class, 'index']);
-Route::get('/react-movie-ia', [\App\Http\Controllers\PageReactController::class, 'index']);
+Route::get('/laravel-movie-ia', [\App\Http\Controllers\PageBladeController::class, 'index'])->name('laravel-movie-ia');
+//Route::get('/react-movie-ia', [\App\Http\Controllers\PageReactController::class, 'index']);

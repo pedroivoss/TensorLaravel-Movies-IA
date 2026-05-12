@@ -1,9 +1,8 @@
 # 🎬 TensorLaravel Movies IA
 
-Sistema de **Recomendação de Filmes com IA no browser** construído com **Laravel**, **React 18**, **Ant Design 5**, **TensorFlow.js** e **MySQL**.
+Sistema de **Recomendação de Filmes com IA no browser** construído com **Laravel**, **JavaScript**, **Bootstrap 5** e **TensorFlow.js**.
 
-Projeto de pós-graduação que demonstra duas abordagens de frontend consumindo a mesma API REST Laravel:
-uma **SPA React** com Ant Design e uma **interface Blade** com Bootstrap 5 + jQuery — ambas com recomendações geradas por uma **rede neural treinada diretamente no browser** via TensorFlow.js, com persistência do modelo no banco de dados.
+Projeto de pós-graduação que demonstra uma interface JavaScript consumindo uma API REST Laravel, com recomendações geradas por uma **rede neural treinada diretamente no browser** via TensorFlow.js, com persistência do modelo no banco de dados.
 
 ---
 
@@ -13,29 +12,29 @@ uma **SPA React** com Ant Design e uma **interface Blade** com Bootstrap 5 + jQu
 ┌──────────────────────────────────────────────────────────────────────────┐
 │  Browser                                                                 │
 │                                                                          │
-│  ┌───────────────────────────┐   ┌──────────────────────────────────┐   │
-│  │  React 18 + Ant Design 5  │   │  Blade + Bootstrap 5 + jQuery    │   │
-│  │  /react-movie-ia          │   │  /blade-movie-ia                 │   │
-│  │                           │   │                                  │   │
-│  │  • Seletor de usuários    │   │  • Seletor de usuários           │   │
-│  │  • Busca paginada filmes  │   │  • Busca de filmes               │   │
-│  │  • Avaliação (1-5 ★)     │   │  • Filtros e ordenação           │   │
-│  │  • Recomendações IA       │   │  • Avaliação (1-5 ★)            │   │
-│  │                           │   │  • Recomendações IA              │   │
-│  │                           │   │  • Modal Treinar Modelo (TF.js)  │   │
-│  │                           │   │  • Console do Modelo (IA Log)    │   │
-│  └─────────────┬─────────────┘   └─────────────────┬────────────────┘   │
-│                │                                   │                    │
-│                │              TensorFlow.js         │                    │
-│                └──────────── modelTrainingWorker.js ┘                    │
-│                              ┌──────────────────────────┐               │
-│                              │  Rede Neural (TF.js)      │               │
-│                              │  Dense(128, relu)         │               │
-│                              │  Dense(64,  relu)         │               │
-│                              │  Dense(32,  relu)         │               │
-│                              │  Dense(1, sigmoid)        │               │
-│                              │  → score de afinidade     │               │
-│                              └──────────────────────────┘               │
+│  ┌──────────────────────────────────────────────────────────────────┐   │
+│  │  Blade + Bootstrap 5 + jQuery                                    │   │
+│  │  /laravel-movie-ia                                                 │   │
+│  │                                                                  │   │
+│  │  • Seletor de usuários (Select2)                                 │   │
+│  │  • Busca de filmes (6.178 títulos)                               │   │
+│  │  • Filtros e ordenação                                           │   │
+│  │  • Avaliação (1–5 ★) + persistência no banco                    │   │
+│  │  • Remover filme dos assistidos                                  │   │
+│  │  • Recomendações IA / fallback por gêneros                       │   │
+│  │  • Modal "Treinar Modelo" (TF.js)                                │   │
+│  │  • Console do Modelo (IA Log em tempo real)                      │   │
+│  └──────────────────────────────┬───────────────────────────────────┘   │
+│                                 │  TensorFlow.js                        │
+│                    modelTrainingWorker.js                               │
+│                    ┌──────────────────────────┐                        │
+│                    │  Rede Neural (TF.js)      │                        │
+│                    │  Dense(128, relu)         │                        │
+│                    │  Dense(64,  relu)         │                        │
+│                    │  Dense(32,  relu)         │                        │
+│                    │  Dense(1, sigmoid)        │                        │
+│                    │  → score de afinidade     │                        │
+│                    └──────────────────────────┘                        │
 └──────────────────────────────────────────────────────────────────────────┘
                  │  HTTP / JSON
 ┌────────────────▼──────────────────────────────────────────────────────────┐
@@ -43,9 +42,10 @@ uma **SPA React** com Ant Design e uma **interface Blade** com Bootstrap 5 + jQu
 │                                                                            │
 │  GET  /api/users                  → lista usuários                        │
 │  GET  /api/users/{id}             → perfil + filmes avaliados             │
-│  GET  /api/movies?search=&page=   → busca paginada de filmes              │
+│  POST /api/movies                 → busca de filmes                       │
 │  GET  /api/recommendations/{user} → content-based filtering (fallback)    │
 │  POST /api/ratings                → registra avaliação (1-5 estrelas)     │
+│  DELETE /api/ratings              → remove avaliação                      │
 │  POST /api/ai-models/save         → persiste modelo treinado (MySQL)      │
 │  GET  /api/ai-models/load         → recupera modelo salvo                 │
 │                                                                            │
@@ -59,14 +59,13 @@ uma **SPA React** com Ant Design e uma **interface Blade** com Bootstrap 5 + jQu
 
 ### Stack
 
-| Camada          | Tecnologia                                       |
-| --------------- | ------------------------------------------------ |
-| Backend         | Laravel                                          |
-| Banco           | MySQL                                            |
-| Frontend React  | React 18 + Vite                                  |
-| UI React        | Ant Design 5 + icons                             |
-| Frontend Blade  | Bootstrap 5 + jQuery + Select2                   |
-| IA (browser)    | TensorFlow.js + TFjs-Vis (CDN)                  |
+| Camada         | Tecnologia                                  |
+| -------------- | ------------------------------------------- |
+| Backend        | Laravel                                     |
+| Banco          | MySQL                                       |
+| Frontend       | JavaScript + Bootstrap 5 + jQuery + Select2 |
+| IA (browser)   | TensorFlow.js + TFjs-Vis (CDN)              |
+| Notificações | SweetAlert2 (CDN)                           |
 
 ---
 
@@ -76,13 +75,13 @@ O treinamento acontece inteiramente no browser, sem backend de ML:
 
 ```
 1. Treinar (modal "Treinar Modelo"):
-   Blade → usa window.app.movies + window.app.users (já carregados)
-   makeContext()      → monta metadados: faixas de normalização, índice de gêneros
+   window.app.movies + window.app.users (já carregados pela Blade)
+   makeContext()       → monta metadados: faixas de normalização, índice de gêneros
    createInputVector() → para cada par (usuário, filme avaliado):
                          [age_norm, rate_norm, ...genres_user(N), ...genres_movie(N)]
-   tf.sequential()    → Dense(128)→Dense(64)→Dense(32)→Dense(1, sigmoid)
-   model.fit()        → 50 épocas, batchSize=32, shuffle=true
-   TFVisorView.js     → gráficos de Loss e Precisão por época (tfjs-vis)
+   tf.sequential()     → Dense(128)→Dense(64)→Dense(32)→Dense(1, sigmoid)
+   model.fit()         → 50 épocas, batchSize=32, shuffle=true
+   TFVisorView.js      → gráficos de Loss e Precisão por época (tfjs-vis)
    saveModelToDatabase() → POST /api/ai-models/save (pesos em base64 → MySQL)
 
 2. Recomendar (ao selecionar usuário):
@@ -92,7 +91,7 @@ O treinamento acontece inteiramente no browser, sem backend de ML:
 
 3. Persistência:
    Ao abrir a página → GET /api/ai-models/load → restaura modelo salvo
-   Modelo fica disponível em window._model
+   Modelo fica disponível em window._model + window._globalCtx
 ```
 
 ### Vetor de entrada
@@ -108,27 +107,27 @@ Dimensões = 2 + (numGêneros × 2)
 
 ---
 
-## 🌐 Rotas Web
+## 🌐 Rota principal
 
-| Rota                  | Descrição                             |
-| --------------------- | ------------------------------------- |
-| `GET /`               | Welcome page (Laravel default)        |
-| `GET /react-movie-ia` | SPA React com Ant Design              |
-| `GET /blade-movie-ia` | Interface Blade com Bootstrap 5       |
+| Rota                      | Descrição                         |
+| ------------------------- | ----------------------------------- |
+| `GET /`                 | Welcome page                        |
+| `GET /laravel-movie-ia` | Interface Blade — sistema completo |
 
 ---
 
 ## 📡 API Endpoints
 
-| Método | Rota                          | Descrição                                                    |
-| ------ | ----------------------------- | ------------------------------------------------------------ |
-| GET    | `/api/users`                  | Lista usuários com contagem de avaliações                    |
-| GET    | `/api/users/{id}`             | Perfil + filmes avaliados                                    |
-| GET    | `/api/movies`                 | Busca paginada (`?search=`, `?page=`, `?per_page=`)          |
-| GET    | `/api/recommendations/{user}` | Recomendações content-based (fallback sem modelo treinado)   |
-| POST   | `/api/ratings`                | Registra / atualiza avaliação (1-5 estrelas)                 |
-| POST   | `/api/ai-models/save`         | Persiste topologia + pesos do modelo no MySQL                |
-| GET    | `/api/ai-models/load`         | Recupera e restaura o último modelo salvo                    |
+| Método | Rota                            | Descrição                                                  |
+| ------- | ------------------------------- | ------------------------------------------------------------ |
+| GET     | `/api/users`                  | Lista usuários com contagem de avaliações                 |
+| GET     | `/api/users/{id}`             | Perfil + filmes avaliados + notas salvas                     |
+| POST    | `/api/movies`                 | Busca de filmes (`{ search, ids? }`)                       |
+| GET     | `/api/recommendations/{user}` | Recomendações content-based (fallback sem modelo treinado) |
+| POST    | `/api/ratings`                | Registra / atualiza avaliação (1-5 estrelas)               |
+| DELETE  | `/api/ratings`                | Remove avaliação (`{ user_id, movie_id }`)               |
+| POST    | `/api/ai-models/save`         | Persiste topologia + pesos do modelo no MySQL                |
+| GET     | `/api/ai-models/load`         | Recupera e restaura o último modelo salvo                   |
 
 ### `POST /api/ratings` — body esperado
 
@@ -184,12 +183,12 @@ php artisan movies:import   # importa 6.178 filmes do IMDB CSV
 php artisan db:seed         # cria 42 usuários e avaliações
 ```
 
-| Tabela                | Conteúdo                                     |
-| --------------------- | -------------------------------------------- |
-| `users`               | 42 usuários com perfis e gêneros favoritos   |
-| `movies`              | 6.178 filmes do IMDB                         |
-| `movie_user_ratings`  | ~1.600 avaliações 1–5 estrelas               |
-| `ai_models`           | modelo TF.js persistido (vazio até treinar)  |
+| Tabela                 | Conteúdo                                    |
+| ---------------------- | -------------------------------------------- |
+| `users`              | 42 usuários com perfis e gêneros favoritos |
+| `movies`             | 6.178 filmes do IMDB                         |
+| `movie_user_ratings` | ~1.600 avaliações 1–5 estrelas            |
+| `ai_models`          | modelo TF.js persistido (vazio até treinar) |
 
 #### Fluxo de amostra — modo rápido para testes do modelo
 
@@ -201,43 +200,26 @@ php artisan movies:import --sample                   # 20 filmes variados por g�
 php artisan db:seed --class=SampleDatabaseSeeder     # 7 usuários, ~25 avaliações
 ```
 
-| Tabela                | Conteúdo (sample)                                              |
-| --------------------- | -------------------------------------------------------------- |
-| `movies`              | 20 filmes, 1–2 por gênero (round-robin no CSV)                 |
-| `users`               | 7 usuários — 5 com avaliações + 2 sem relação com filmes       |
-| `movie_user_ratings`  | ~25 avaliações (5 usuários × até 5 filmes cada)                |
+| Tabela                 | Conteúdo (sample)                                             |
+| ---------------------- | -------------------------------------------------------------- |
+| `movies`             | 20 filmes, 1–2 por gênero (round-robin no CSV)               |
+| `users`              | 7 usuários — 5 com avaliações + 2 sem relação com filmes |
+| `movie_user_ratings` | ~25 avaliações (5 usuários × até 5 filmes cada)           |
 
 Os 2 usuários sem relação com filmes simulam casos de borda para a rede neural:
-- **Cold Start absoluto** — sem gêneros favoritos e sem avaliações (`favorite_genres = NULL`)
+
+- **Cold Start absoluto** — sem gêneros favoritos e sem avaliações
 - **Sem Histórico** — tem gêneros favoritos declarados, mas nunca avaliou nenhum filme
 
-Para resetar e re-popular no modo sample:
+### 4. Rodar o servidor
 
 ```bash
-php artisan migrate:fresh
-php artisan movies:import --fresh --sample
-php artisan db:seed --class=SampleDatabaseSeeder
+php artisan serve --port=3000
 ```
 
-### 4. Instalar dependências JavaScript
+Acesse: **http://localhost:3000/laravel-movie-ia**
 
-```bash
-npm install
-```
-
-### 5. Rodar os servidores
-
-```bash
-# Terminal 1 — Laravel (porta 8000 por padrão)
-php artisan serve
-
-# Terminal 2 — Vite (HMR para o React)
-npm run dev
-```
-
-Acesse:
-- React → **http://localhost:8000/react-movie-ia**
-- Blade → **http://localhost:8000/blade-movie-ia**
+> A interface Blade carrega todos os assets via CDN — não é necessário `npm run dev`.
 
 ---
 
@@ -263,8 +245,7 @@ php artisan db:seed --class=SampleDatabaseSeeder
 TensorLaravel-Movies-IA/
 ├── app/
 │   ├── Http/Controllers/
-│   │   ├── PageBladeController.php           ← serve /blade-movie-ia
-│   │   ├── PageReactController.php           ← serve /react-movie-ia
+│   │   ├── PageBladeController.php           ← serve /laravel-movie-ia
 │   │   └── Api/
 │   │       ├── UserController.php
 │   │       ├── MovieController.php
@@ -274,21 +255,11 @@ TensorLaravel-Movies-IA/
 │       ├── User.php
 │       ├── Movie.php
 │       └── MovieUserRating.php
-├── resources/
-│   ├── js/
-│   │   ├── app.jsx                           ← entry point React
-│   │   ├── Pages/
-│   │   │   └── RecommendationSystem.jsx      ← SPA principal
-│   │   ├── components/
-│   │   │   ├── MovieCard.jsx
-│   │   │   └── UserCard.jsx
-│   │   └── services/
-│   │       └── api.js                        ← chamadas HTTP
-│   └── views/
-│       ├── app.blade.php                     ← entry point React (Vite)
-│       ├── teste-ia.blade.php                ← interface Blade completa
-│       └── modals/
-│           └── treinar-modal.blade.php       ← modal TF.js com visor
+├── resources/views/
+│   ├── teste-ia.blade.php                    ← interface principal (Blade)
+│   ├── welcome.blade.php                     ← página inicial
+│   └── modals/
+│       └── treinar-modal.blade.php           ← modal TF.js com visor
 ├── public/assets/
 │   ├── css/
 │   │   └── style.css
@@ -296,8 +267,9 @@ TensorLaravel-Movies-IA/
 │       ├── pageBlade.js                      ← lógica de UI da interface Blade
 │       ├── TFVisorView.js                    ← gráficos de treinamento (tfjs-vis)
 │       └── workers/
-│           └── modelTrainingWorker.js        ← rede neural: makeContext, createInputVector,
-│                                               trainModel, getRecommendations, save/load
+│           └── modelTrainingWorker.js        ← rede neural: makeContext,
+│                                               createInputVector, trainModel,
+│                                               getRecommendations, save/load
 ├── routes/
 │   ├── web.php
 │   └── api.php
@@ -312,30 +284,23 @@ TensorLaravel-Movies-IA/
 
 Para cada filme não assistido pelo usuário, o modelo prevê um score de afinidade [0..1] baseado no vetor de entrada (idade, nota média do filme, gêneros do usuário e gêneros do filme). Os 10 filmes com maior score são retornados como recomendações.
 
-### Fallback — Content-Based Filtering (sem modelo)
+### Fallback — Content-Based Filtering (sem modelo treinado)
 
-| Situação                                  | Comportamento                                              |
-| ----------------------------------------- | ---------------------------------------------------------- |
-| Usuário com gêneros favoritos             | Filtra filmes por gêneros favoritos, ordena por nota IMDB  |
-| Cold Start (sem gêneros e sem histórico)  | Top 20 filmes mais bem avaliados do IMDB                   |
-| Filmes já avaliados                       | Excluídos das recomendações                                |
+| Situação                                 | Comportamento                                              |
+| ------------------------------------------ | ---------------------------------------------------------- |
+| Usuário com gêneros favoritos            | Filtra filmes por gêneros favoritos, ordena por nota IMDB |
+| Cold Start (sem gêneros e sem histórico) | Top filmes mais bem avaliados do IMDB                      |
+| Filmes já avaliados                       | Excluídos das recomendações                             |
 
 ---
 
-## 📦 Dependências principais
+## 📦 Dependências
 
 ### PHP (Composer)
 
 - `laravel/framework`
 
-### JavaScript (npm)
-
-- `react` + `react-dom`
-- `antd` + `@ant-design/icons`
-- `axios`
-- `vite` + `@vitejs/plugin-react` + `laravel-vite-plugin`
-
-### CDN (interface Blade)
+### CDN (interface Blade — sem build step)
 
 - Bootstrap 5 + Bootstrap Icons
 - jQuery + Select2
