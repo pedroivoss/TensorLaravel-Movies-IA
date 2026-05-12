@@ -79,8 +79,19 @@ function movieCardHtml(movie, ratedIds, isHighlight = false) {
         ? `<span class="ai-tag ai-tag--green" style="font-size:10px;padding:0 5px;"><i class="bi bi-check-circle-fill"></i> Assistido</span>`
         : '';
 
-    const btnLabel = isWatched ? 'Atualizar' : 'Marcar como assistido';
-    const btnClass = isWatched ? 'ai-btn--default' : 'ai-btn--primary';
+    const actionsHtml = isWatched
+        ? `<div style="display:flex;gap:4px;">
+               <button class="ai-btn ai-btn--default btn-marcar" data-mid="${movie.id}"
+                       style="font-size:11px;padding:3px 10px;height:auto;">Atualizar</button>
+               <button class="ai-btn ai-btn--danger btn-remover" data-mid="${movie.id}"
+                       style="font-size:11px;padding:3px 8px;height:auto;"
+                       title="Remover dos assistidos"><i class="bi bi-trash3"></i></button>
+           </div>`
+        : `<button class="ai-btn ai-btn--primary btn-marcar" data-mid="${movie.id}"
+                   style="font-size:11px;padding:3px 10px;height:auto;"
+                   ${hasUser ? '' : 'disabled'}>
+               Marcar como assistido
+           </button>`;
 
     return `
         <div class="movie-card${isHighlight ? ' movie-card--highlight' : ''}" data-mid="${movie.id}">
@@ -96,12 +107,7 @@ function movieCardHtml(movie, ratedIds, isHighlight = false) {
             </div>
             <div class="movie-card__right">
                 <div class="stars-row" id="stars-${movie.id}">${starsHtml(movie.id, rating)}</div>
-                <button class="ai-btn ${btnClass} btn-marcar"
-                        data-mid="${movie.id}"
-                        style="font-size:11px;padding:3px 10px;height:auto;"
-                        ${hasUser ? '' : 'disabled'}>
-                    ${btnLabel}
-                </button>
+                ${actionsHtml}
             </div>
         </div>`;
 }
@@ -250,6 +256,7 @@ async function selectUser(userId) {
         app.selectedUser = null;
         app.userDetail = null;
         app.reco = [];
+        app.pendingRatings = {};
         // Reseta o filtro "só assistidos" ao desselecionar usuário
         app.filterWatched = false;
         $('#filter-watched').prop('checked', false);
@@ -263,6 +270,7 @@ async function selectUser(userId) {
     app.selectedUser = app.users.find(u => u.id == userId) ?? null;
     app.userDetail = null;
     app.reco = [];
+    app.pendingRatings = {};
     renderUserProfile();
     updateMoviesPanel();
 
@@ -274,6 +282,11 @@ async function selectUser(userId) {
 
     if (detailRes) {
         app.userDetail = detailRes;
+        // Pré-popula as estrelas com as notas salvas do banco
+        const savedRatings = detailRes.rated_movie_ratings ?? {};
+        Object.entries(savedRatings).forEach(([movieId, rating]) => {
+            app.pendingRatings[parseInt(movieId)] = rating;
+        });
         renderUserProfile();
         updateMoviesPanel();
 
@@ -398,6 +411,40 @@ async function saveRating(movieId, rating) {
 
     renderMovies();
     renderReco();
+
+    Swal.fire({
+        toast: true, position: 'bottom-end', icon: 'success',
+        title: 'Avaliação salva!', showConfirmButton: false, timer: 2000,
+        timerProgressBar: true,
+    });
+}
+
+async function removeRating(movieId) {
+    if (!app.selectedUser) return;
+
+    const res = await fetch('/api/ratings', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': CSRF_TOKEN },
+        body: JSON.stringify({ user_id: app.selectedUser.id, movie_id: movieId }),
+    });
+
+    if (!res.ok) return;
+
+    if (app.userDetail) {
+        app.userDetail.rated_movie_ids = app.userDetail.rated_movie_ids.filter(id => id !== movieId);
+        app.userDetail.ratings_count = Math.max(0, (app.userDetail.ratings_count ?? 0) - 1);
+    }
+    delete app.pendingRatings[movieId];
+
+    renderUserProfile();
+    renderMovies();
+    renderReco();
+
+    Swal.fire({
+        toast: true, position: 'bottom-end', icon: 'info',
+        title: 'Removido dos assistidos', showConfirmButton: false, timer: 2000,
+        timerProgressBar: true,
+    });
 }
 
 /* ════════════════════════════════════════════════════════════════════════════

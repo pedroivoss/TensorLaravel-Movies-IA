@@ -176,6 +176,8 @@ body {
 .ai-btn--default:hover:not(:disabled) { border-color: var(--primary); color: var(--primary); }
 .ai-btn--blue-outline { background: #fff; color: var(--primary); border-color: var(--primary); }
 .ai-btn--blue-outline:hover:not(:disabled) { background: var(--primary-bg); }
+.ai-btn--danger { background: #fff1f0; color: #cf1322; border-color: #ffa39e; }
+.ai-btn--danger:hover:not(:disabled) { background: #ffa39e; border-color: #cf1322; }
 
 /* ── Icons coloridos ──────────────────────────────────────────────────── */
 .icon-blue   { color: var(--primary) !important; }

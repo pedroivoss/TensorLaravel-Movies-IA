@@ -384,6 +384,28 @@
             await saveRating(mid, rating);
         });
 
+        // Botão remover dos assistidos (delegado)
+        $(document).on('click', '.btn-remover', async function () {
+            const mid = parseInt($(this).data('mid'));
+            const btn = $(this);
+
+            const result = await Swal.fire({
+                title: 'Remover dos assistidos?',
+                text: 'A nota será apagada do banco de dados.',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonText: 'Remover',
+                cancelButtonText: 'Cancelar',
+                confirmButtonColor: '#cf1322',
+                reverseButtons: true,
+            });
+
+            if (!result.isConfirmed) return;
+
+            btn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm"></span>');
+            await removeRating(mid);
+        });
+
         // No bloco de script do Blade, ajuste o evento do botão treinar:
         $(document).on('click', '#btn-treinar', async function () {
             const btn = $(this);
