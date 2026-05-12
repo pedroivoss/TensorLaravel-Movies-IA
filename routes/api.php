@@ -36,3 +36,4 @@ Route::post('/ai-models/save', [RecommendationController::class, 'storeModel']);
 Route::get('/ai-models/load', [RecommendationController::class, 'loadModel']);
 
 Route::post('/ratings', [RatingController::class, 'store']);
+Route::delete('/ratings', [RatingController::class, 'destroy']);

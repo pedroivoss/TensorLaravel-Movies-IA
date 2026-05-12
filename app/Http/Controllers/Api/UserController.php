@@ -58,16 +58,21 @@ class UserController extends Controller
      */
     public function show(User $user): JsonResponse
     {
-        $ratedMovieIds = $user->ratings()->pluck('movie_id')->toArray();
+        $ratings = $user->ratings()->select('movie_id', 'rating')->get()
+            ->mapWithKeys(fn ($r) => [(string) $r->movie_id => $r->rating])
+            ->toArray();
+
+        $ratedMovieIds = array_map('intval', array_keys($ratings));
 
         return response()->json([
-            'id'              => $user->id,
-            'name'            => $user->name,
-            'age'             => $user->age,
-            'favorite_genres' => $user->favorite_genres ?? [],
-            'ratings_count'   => $user->ratings()->count(),
-            'rated_movie_ids' => $ratedMovieIds,
-            'is_cold_start'   => empty($user->favorite_genres) && count($ratedMovieIds) === 0,
+            'id'                  => $user->id,
+            'name'                => $user->name,
+            'age'                 => $user->age,
+            'favorite_genres'     => $user->favorite_genres ?? [],
+            'ratings_count'       => count($ratedMovieIds),
+            'rated_movie_ids'     => $ratedMovieIds,
+            'rated_movie_ratings' => $ratings,
+            'is_cold_start'       => empty($user->favorite_genres) && count($ratedMovieIds) === 0,
         ]);
     }
 }

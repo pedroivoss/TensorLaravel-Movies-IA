@@ -67,4 +67,24 @@ class RatingController extends Controller
             ],
         ], $rating->wasRecentlyCreated ? 201 : 200);
     }
+
+    /**
+     * Remove a avaliação de um usuário para um filme.
+     *
+     * DELETE /api/ratings
+     * Body: { user_id, movie_id }
+     */
+    public function destroy(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'user_id'  => ['required', 'integer', 'exists:users,id'],
+            'movie_id' => ['required', 'integer', 'exists:movies,id'],
+        ]);
+
+        $deleted = MovieUserRating::where('user_id', $validated['user_id'])
+            ->where('movie_id', $validated['movie_id'])
+            ->delete();
+
+        return response()->json(['success' => (bool) $deleted], $deleted ? 200 : 404);
+    }
 }
